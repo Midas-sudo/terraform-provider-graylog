@@ -11,6 +11,7 @@ Targets **Graylog 6.x** and designed for forward compatibility with **7.x**.
 | Resource | Description |
 |---|---|
 | `graylog_input` | Manage message inputs (Syslog, GELF, Beats, etc.) |
+| `graylog_index_set` | Manage index sets, rotation and retention strategy settings |
 | `graylog_stream` | Manage streams for message routing |
 | `graylog_stream_rule` | Manage individual rules on a stream |
 | `graylog_pipeline` | Manage processing pipelines |
@@ -24,6 +25,9 @@ Targets **Graylog 6.x** and designed for forward compatibility with **7.x**.
 | `graylog_input` | Look up a single input by ID |
 | `graylog_inputs` | List all inputs |
 | `graylog_input_types` | List available input types |
+| `graylog_index_set` | Look up a single index set by ID |
+| `graylog_index_sets` | List all index sets |
+| `graylog_index_template` | Read the generated index template for an index set |
 | `graylog_stream` | Look up a single stream by ID |
 | `graylog_streams` | List all streams |
 | `graylog_pipeline` | Look up a single pipeline by ID |
