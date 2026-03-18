@@ -31,6 +31,8 @@ Targets **Graylog 6.x** and designed for forward compatibility with **7.x**.
 | `graylog_output` | Manage Graylog outputs via raw JSON payload |
 | `graylog_extractor` | Manage Graylog input extractors via raw JSON payload |
 | `graylog_grok_pattern` | Manage Graylog grok patterns via raw JSON payload |
+| `graylog_content_pack` | Manage Graylog content pack revisions via raw JSON payload |
+| `graylog_content_pack_installation` | Manage Graylog content pack installations |
 
 ### Data Sources
 
@@ -71,6 +73,8 @@ Targets **Graylog 6.x** and designed for forward compatibility with **7.x**.
 | `graylog_extractor` | Look up a single extractor by input and extractor IDs |
 | `graylog_extractors` | List extractors for a specific input |
 | `graylog_grok_patterns` | List all grok patterns |
+| `graylog_content_pack` | Look up a single content pack by ID and revision |
+| `graylog_content_packs` | List latest content pack revisions |
 
 ## Requirements
 

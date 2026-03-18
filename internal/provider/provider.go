@@ -133,6 +133,8 @@ func (p *GraylogProvider) Configure(ctx context.Context, req provider.ConfigureR
 
 func (p *GraylogProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
+		NewContentPackResource,
+		NewContentPackInstallationResource,
 		NewOutputResource,
 		NewExtractorResource,
 		NewGrokPatternResource,
@@ -159,6 +161,8 @@ func (p *GraylogProvider) Resources(_ context.Context) []func() resource.Resourc
 
 func (p *GraylogProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
+		NewContentPackDataSource,
+		NewContentPacksDataSource,
 		NewOutputDataSource,
 		NewOutputsDataSource,
 		NewExtractorDataSource,
