@@ -1,0 +1,198 @@
+package provider
+
+import (
+	"fmt"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+)
+
+func TestAccLookupDataAdapterResource(t *testing.T) {
+	suffix := strings.ToLower(fmt.Sprintf("%x", time.Now().UnixNano()))[:8]
+	name := "tf-adapter-" + suffix
+	updatedName := "tf-adapter-upd-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccLookupDataAdapterResourceConfig(name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("graylog_lookup_data_adapter.test", "name", name),
+					resource.TestCheckResourceAttrSet("graylog_lookup_data_adapter.test", "id"),
+				),
+			},
+			{
+				ResourceName:      "graylog_lookup_data_adapter.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"payload_json",
+				},
+			},
+			{
+				Config: testAccLookupDataAdapterResourceConfig(updatedName),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("graylog_lookup_data_adapter.test", "name", updatedName),
+				),
+			},
+		},
+	})
+}
+
+func TestAccLookupCacheResource(t *testing.T) {
+	suffix := strings.ToLower(fmt.Sprintf("%x", time.Now().UnixNano()))[:8]
+	name := "tf-cache-" + suffix
+	updatedName := "tf-cache-upd-" + suffix
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccLookupCacheResourceConfig(name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("graylog_lookup_cache.test", "name", name),
+					resource.TestCheckResourceAttrSet("graylog_lookup_cache.test", "id"),
+				),
+			},
+			{
+				ResourceName:      "graylog_lookup_cache.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"payload_json",
+				},
+			},
+			{
+				Config: testAccLookupCacheResourceConfig(updatedName),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("graylog_lookup_cache.test", "name", updatedName),
+				),
+			},
+		},
+	})
+}
+
+func TestAccLookupTableResource(t *testing.T) {
+	suffix := strings.ToLower(fmt.Sprintf("%x", time.Now().UnixNano()))[:8]
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccLookupTableResourceConfig("tf-lktbl-"+suffix, "tf-lkcache-"+suffix, "tf-lkadapter-"+suffix),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("graylog_lookup_table.test", "name", "tf-lktbl-"+suffix),
+					resource.TestCheckResourceAttrSet("graylog_lookup_table.test", "id"),
+				),
+			},
+			{
+				ResourceName:      "graylog_lookup_table.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"payload_json",
+				},
+			},
+			{
+				Config: testAccLookupTableResourceConfig("tf-lktbl-upd-"+suffix, "tf-lkcache-"+suffix, "tf-lkadapter-"+suffix),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("graylog_lookup_table.test", "name", "tf-lktbl-upd-"+suffix),
+				),
+			},
+		},
+	})
+}
+
+func testAccLookupDataAdapterResourceConfig(name string) string {
+	return fmt.Sprintf(`
+resource "graylog_lookup_data_adapter" "test" {
+  payload_json = jsonencode({
+    title       = %[1]q
+    name        = %[1]q
+    description = "Terraform acceptance lookup adapter"
+    config = {
+      type                    = "csvfile"
+      path                    = "/tmp/lookup-table.csv"
+      separator               = ","
+      quotechar               = "\""
+      key_column              = "key"
+      value_column            = "value"
+      check_interval          = 60
+      case_insensitive_lookup = false
+      multi_value_lookup      = false
+      cidr_lookup             = false
+    }
+  })
+}
+`, name)
+}
+
+func testAccLookupCacheResourceConfig(name string) string {
+	return fmt.Sprintf(`
+resource "graylog_lookup_cache" "test" {
+  payload_json = jsonencode({
+    title       = %[1]q
+    name        = %[1]q
+    description = "Terraform acceptance lookup cache"
+    config = {
+      type = "none"
+    }
+  })
+}
+`, name)
+}
+
+func testAccLookupTableResourceConfig(tableName, cacheName, adapterName string) string {
+	return fmt.Sprintf(`
+resource "graylog_lookup_data_adapter" "adapter" {
+  payload_json = jsonencode({
+    title       = %[3]q
+    name        = %[3]q
+    description = "Terraform acceptance lookup adapter for table"
+    config = {
+      type                    = "csvfile"
+      path                    = "/tmp/lookup-table.csv"
+      separator               = ","
+      quotechar               = "\""
+      key_column              = "key"
+      value_column            = "value"
+      check_interval          = 60
+      case_insensitive_lookup = false
+      multi_value_lookup      = false
+      cidr_lookup             = false
+    }
+  })
+}
+
+resource "graylog_lookup_cache" "cache" {
+  payload_json = jsonencode({
+    title       = %[2]q
+    name        = %[2]q
+    description = "Terraform acceptance lookup cache for table"
+    config = {
+      type = "none"
+    }
+  })
+}
+
+resource "graylog_lookup_table" "test" {
+  payload_json = jsonencode({
+    title                     = %[1]q
+    name                      = %[1]q
+    description               = "Terraform acceptance lookup table"
+    cache_id                  = graylog_lookup_cache.cache.id
+    data_adapter_id           = graylog_lookup_data_adapter.adapter.id
+    default_single_value      = ""
+    default_single_value_type = "NULL"
+    default_multi_value       = "[]"
+    default_multi_value_type  = "OBJECT"
+  })
+}
+`, tableName, cacheName, adapterName)
+}

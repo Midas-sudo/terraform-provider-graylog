@@ -25,6 +25,9 @@ Targets **Graylog 6.x** and designed for forward compatibility with **7.x**.
 | `graylog_event_definition` | Manage Graylog event definitions via raw JSON payload |
 | `graylog_event_notification` | Manage Graylog event notifications via raw JSON payload |
 | `graylog_event_definition_notification_binding` | Manage notification bindings attached to event definitions |
+| `graylog_lookup_data_adapter` | Manage Graylog lookup data adapters via raw JSON payload |
+| `graylog_lookup_cache` | Manage Graylog lookup caches via raw JSON payload |
+| `graylog_lookup_table` | Manage Graylog lookup tables via raw JSON payload |
 
 ### Data Sources
 
@@ -54,6 +57,12 @@ Targets **Graylog 6.x** and designed for forward compatibility with **7.x**.
 | `graylog_event_definitions` | List all event definitions |
 | `graylog_event_notification` | Look up a single event notification by ID |
 | `graylog_event_notifications` | List all event notifications |
+| `graylog_lookup_data_adapter` | Look up a single lookup data adapter by ID |
+| `graylog_lookup_data_adapters` | List all lookup data adapters |
+| `graylog_lookup_cache` | Look up a single lookup cache by ID |
+| `graylog_lookup_caches` | List all lookup caches |
+| `graylog_lookup_table` | Look up a single lookup table by ID |
+| `graylog_lookup_tables` | List all lookup tables |
 
 ## Requirements
 

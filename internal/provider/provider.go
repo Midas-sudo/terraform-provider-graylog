@@ -133,6 +133,9 @@ func (p *GraylogProvider) Configure(ctx context.Context, req provider.ConfigureR
 
 func (p *GraylogProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
+		NewLookupDataAdapterResource,
+		NewLookupCacheResource,
+		NewLookupTableResource,
 		NewEventDefinitionResource,
 		NewEventNotificationResource,
 		NewEventDefinitionNotificationBindingResource,
@@ -153,6 +156,12 @@ func (p *GraylogProvider) Resources(_ context.Context) []func() resource.Resourc
 
 func (p *GraylogProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
+		NewLookupDataAdapterDataSource,
+		NewLookupDataAdaptersDataSource,
+		NewLookupCacheDataSource,
+		NewLookupCachesDataSource,
+		NewLookupTableDataSource,
+		NewLookupTablesDataSource,
 		NewEventDefinitionDataSource,
 		NewEventDefinitionsDataSource,
 		NewEventNotificationDataSource,
