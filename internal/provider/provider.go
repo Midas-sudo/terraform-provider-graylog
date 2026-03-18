@@ -64,15 +64,15 @@ func (p *GraylogProvider) Schema(_ context.Context, _ provider.SchemaRequest, re
 			},
 			"insecure_skip_verify": schema.BoolAttribute{
 				MarkdownDescription: "Skip TLS certificate verification. Defaults to `false`.",
-				Optional: true,
+				Optional:            true,
 			},
 			"ca_cert": schema.StringAttribute{
 				MarkdownDescription: "PEM-encoded CA certificate to trust for the Graylog server's TLS certificate.",
-				Optional: true,
+				Optional:            true,
 			},
 			"timeout": schema.Int64Attribute{
 				MarkdownDescription: "HTTP request timeout in seconds. Defaults to `30`.",
-				Optional: true,
+				Optional:            true,
 			},
 		},
 	}
@@ -133,6 +133,9 @@ func (p *GraylogProvider) Configure(ctx context.Context, req provider.ConfigureR
 
 func (p *GraylogProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
+		NewRoleResource,
+		NewUserResource,
+		NewEntityShareResource,
 		NewIndexSetResource,
 		NewInputResource,
 		NewStreamResource,
@@ -145,6 +148,10 @@ func (p *GraylogProvider) Resources(_ context.Context) []func() resource.Resourc
 
 func (p *GraylogProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
+		NewRoleDataSource,
+		NewRolesDataSource,
+		NewUserDataSource,
+		NewUsersDataSource,
 		NewIndexSetDataSource,
 		NewIndexSetsDataSource,
 		NewIndexTemplateDataSource,
