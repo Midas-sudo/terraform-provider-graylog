@@ -4,7 +4,7 @@ A [Terraform](https://www.terraform.io) provider for managing [Graylog](https://
 
 Targets **Graylog 6.x** and designed for forward compatibility with **7.x**.
 
-## Features (v0.4.0)
+## Features (v0.8.0)
 
 ### Resources
 
@@ -85,6 +85,14 @@ Targets **Graylog 6.x** and designed for forward compatibility with **7.x**.
 ## Provider Configuration
 
 ```hcl
+terraform {
+  required_providers {
+    graylog = {
+      source = "gmops/graylog"
+    }
+  }
+}
+
 provider "graylog" {
   endpoint = "https://graylog.example.com/api"
   username = "admin"
