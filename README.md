@@ -4,7 +4,7 @@ A [Terraform](https://www.terraform.io) provider for managing [Graylog](https://
 
 Targets **Graylog 6.x** and designed for forward compatibility with **7.x**.
 
-## Features (v0.1)
+## Features (v0.4.0)
 
 ### Resources
 
@@ -17,6 +17,11 @@ Targets **Graylog 6.x** and designed for forward compatibility with **7.x**.
 | `graylog_pipeline` | Manage processing pipelines |
 | `graylog_pipeline_rule` | Manage pipeline rules |
 | `graylog_pipeline_connection` | Connect pipelines to streams |
+| `graylog_role` | Manage Graylog roles and permissions |
+| `graylog_user` | Manage Graylog users (password write-only) |
+| `graylog_entity_share` | Manage entity sharing capabilities for Graylog GRNs |
+| `graylog_view` | Manage Graylog saved searches/views via raw JSON payload |
+| `graylog_dashboard` | Manage Graylog dashboards via raw JSON payload |
 
 ### Data Sources
 
@@ -34,6 +39,14 @@ Targets **Graylog 6.x** and designed for forward compatibility with **7.x**.
 | `graylog_pipelines` | List all pipelines |
 | `graylog_pipeline_rule` | Look up a single pipeline rule by ID |
 | `graylog_pipeline_rules` | List all pipeline rules |
+| `graylog_role` | Look up a single role by name |
+| `graylog_roles` | List all roles |
+| `graylog_user` | Look up a single user by ID |
+| `graylog_users` | List all users |
+| `graylog_view` | Look up a single view by ID |
+| `graylog_views` | List all saved views |
+| `graylog_dashboard` | Look up a single dashboard by ID |
+| `graylog_dashboards` | List all dashboards |
 
 ## Requirements
 
