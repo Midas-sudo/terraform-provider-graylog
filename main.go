@@ -28,7 +28,7 @@ func main() {
 	flag.Parse()
 
 	opts := providerserver.ServeOpts{
-		Address: "registry.terraform.io/premium-minds/graylog",
+		Address: "registry.terraform.io/gmops/graylog",
 		Debug:   debug,
 	}
 
