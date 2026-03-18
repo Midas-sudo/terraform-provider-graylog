@@ -30,8 +30,10 @@ Read-Only:
 
 - `description` (String)
 - `id` (String)
-- `payload_json` (String)
+- `properties_json` (String)
+- `requires_json` (String)
 - `search_id` (String)
+- `state_json` (String)
 - `summary` (String)
 - `title` (String)
 - `type` (String)

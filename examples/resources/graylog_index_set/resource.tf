@@ -1,12 +1,12 @@
 resource "graylog_index_set" "example" {
-  title                  = "Application Index Set"
-  description            = "Managed by Terraform"
-  index_prefix           = "app"
-  shards                 = 1
-  replicas               = 0
-  writable               = true
-  index_analyzer         = "standard"
-  use_legacy_rotation    = false
+  title                    = "Application Index Set"
+  description              = "Managed by Terraform"
+  index_prefix             = "app"
+  shards                   = 1
+  replicas                 = 0
+  writable                 = true
+  index_analyzer           = "standard"
+  use_legacy_rotation      = false
   rotation_strategy_class  = "org.graylog2.indexer.rotation.strategies.TimeBasedSizeOptimizingStrategy"
   retention_strategy_class = "org.graylog2.indexer.retention.strategies.DeletionRetentionStrategy"
 

@@ -1,9 +1,13 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package provider
 
 import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -28,13 +32,15 @@ type DashboardResource struct {
 }
 
 type DashboardResourceModel struct {
-	ID          types.String `tfsdk:"id"`
-	Type        types.String `tfsdk:"type"`
-	Title       types.String `tfsdk:"title"`
-	Summary     types.String `tfsdk:"summary"`
-	Description types.String `tfsdk:"description"`
-	SearchID    types.String `tfsdk:"search_id"`
-	PayloadJSON types.String `tfsdk:"payload_json"`
+	ID             types.String `tfsdk:"id"`
+	Type           types.String `tfsdk:"type"`
+	Title          types.String `tfsdk:"title"`
+	Summary        types.String `tfsdk:"summary"`
+	Description    types.String `tfsdk:"description"`
+	SearchID       types.String `tfsdk:"search_id"`
+	StateJSON      types.String `tfsdk:"state_json"`
+	PropertiesJSON types.String `tfsdk:"properties_json"`
+	RequiresJSON   types.String `tfsdk:"requires_json"`
 }
 
 func (r *DashboardResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -56,20 +62,25 @@ func (r *DashboardResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 				MarkdownDescription: "Dashboard type reported by Graylog (`DASHBOARD`).",
 			},
 			"title": schema.StringAttribute{
-				Computed: true,
+				Required: true,
 			},
 			"summary": schema.StringAttribute{
-				Computed: true,
+				Optional: true,
 			},
 			"description": schema.StringAttribute{
-				Computed: true,
+				Optional: true,
 			},
 			"search_id": schema.StringAttribute{
-				Computed: true,
+				Required: true,
 			},
-			"payload_json": schema.StringAttribute{
-				Required:            true,
-				MarkdownDescription: "Raw JSON payload for the dashboard entity (without wrapper).",
+			"state_json": schema.StringAttribute{
+				Optional: true,
+			},
+			"properties_json": schema.StringAttribute{
+				Optional: true,
+			},
+			"requires_json": schema.StringAttribute{
+				Optional: true,
 			},
 		},
 	}
@@ -95,13 +106,10 @@ func (r *DashboardResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	viewReq, diags := viewFromPayload(data.PayloadJSON.ValueString())
+	viewReq, diags := dashboardFromModel(&data)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
-	}
-	if viewReq.Type == "" {
-		viewReq.Type = "DASHBOARD"
 	}
 
 	created, err := r.client.CreateView(ctx, viewReq)
@@ -111,9 +119,6 @@ func (r *DashboardResource) Create(ctx context.Context, req resource.CreateReque
 	}
 
 	mapDashboardToModel(created, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalViewJSON(created))
-	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -135,9 +140,7 @@ func (r *DashboardResource) Read(ctx context.Context, req resource.ReadRequest, 
 	}
 
 	mapDashboardToModel(current, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalViewJSON(current))
-	}
+	populateDashboardJSONFields(current, &data)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -150,13 +153,10 @@ func (r *DashboardResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	viewReq, diags := viewFromPayload(data.PayloadJSON.ValueString())
+	viewReq, diags := dashboardFromModel(&data)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
-	}
-	if viewReq.Type == "" {
-		viewReq.Type = "DASHBOARD"
 	}
 
 	updated, err := r.client.UpdateView(ctx, state.ID.ValueString(), viewReq)
@@ -166,9 +166,6 @@ func (r *DashboardResource) Update(ctx context.Context, req resource.UpdateReque
 	}
 
 	mapDashboardToModel(updated, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalViewJSON(updated))
-	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -187,4 +184,29 @@ func (r *DashboardResource) Delete(ctx context.Context, req resource.DeleteReque
 
 func (r *DashboardResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+func dashboardFromModel(data *DashboardResourceModel) (*client.View, diag.Diagnostics) {
+	converted := &ViewResourceModel{
+		Title:          data.Title,
+		Summary:        data.Summary,
+		Description:    data.Description,
+		SearchID:       data.SearchID,
+		StateJSON:      data.StateJSON,
+		PropertiesJSON: data.PropertiesJSON,
+		RequiresJSON:   data.RequiresJSON,
+	}
+	return viewFromModel(converted, "DASHBOARD")
+}
+
+func populateDashboardJSONFields(view *client.View, data *DashboardResourceModel) {
+	converted := &ViewResourceModel{
+		StateJSON:      data.StateJSON,
+		PropertiesJSON: data.PropertiesJSON,
+		RequiresJSON:   data.RequiresJSON,
+	}
+	populateViewJSONFields(view, converted)
+	data.StateJSON = converted.StateJSON
+	data.PropertiesJSON = converted.PropertiesJSON
+	data.RequiresJSON = converted.RequiresJSON
 }

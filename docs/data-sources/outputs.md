@@ -28,7 +28,7 @@ data "graylog_outputs" "example" {}
 
 Read-Only:
 
+- `configuration_json` (String)
 - `id` (String)
-- `payload_json` (String)
 - `title` (String)
 - `type` (String)

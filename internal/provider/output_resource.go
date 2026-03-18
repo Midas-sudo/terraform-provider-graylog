@@ -1,9 +1,14 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -26,10 +31,10 @@ type OutputResource struct {
 }
 
 type OutputResourceModel struct {
-	ID          types.String `tfsdk:"id"`
-	Title       types.String `tfsdk:"title"`
-	Type        types.String `tfsdk:"type"`
-	PayloadJSON types.String `tfsdk:"payload_json"`
+	ID                types.String `tfsdk:"id"`
+	Title             types.String `tfsdk:"title"`
+	Type              types.String `tfsdk:"type"`
+	ConfigurationJSON types.String `tfsdk:"configuration_json"`
 }
 
 func (r *OutputResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -43,11 +48,11 @@ func (r *OutputResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			"id": schema.StringAttribute{
 				Computed: true,
 			},
-			"title": schema.StringAttribute{Computed: true},
-			"type":  schema.StringAttribute{Computed: true},
-			"payload_json": schema.StringAttribute{
+			"title": schema.StringAttribute{Required: true},
+			"type":  schema.StringAttribute{Required: true},
+			"configuration_json": schema.StringAttribute{
 				Required:            true,
-				MarkdownDescription: "Raw JSON payload for the output object.",
+				MarkdownDescription: "JSON object with plugin-specific output configuration.",
 			},
 		},
 	}
@@ -72,7 +77,7 @@ func (r *OutputResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	outputReq, diags := outputFromPayload(data.PayloadJSON.ValueString())
+	outputReq, diags := outputFromModel(&data)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -85,9 +90,7 @@ func (r *OutputResource) Create(ctx context.Context, req resource.CreateRequest,
 	}
 
 	mapOutputToResourceModel(created, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalOutputJSON(created))
-	}
+	populateOutputConfiguration(created, &data)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -109,9 +112,7 @@ func (r *OutputResource) Read(ctx context.Context, req resource.ReadRequest, res
 	}
 
 	mapOutputToResourceModel(current, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalOutputJSON(current))
-	}
+	populateOutputConfiguration(current, &data)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -125,7 +126,7 @@ func (r *OutputResource) Update(ctx context.Context, req resource.UpdateRequest,
 	}
 
 	// Graylog output PUT is unreliable in this target environment; replace on update.
-	outputReq, diags := outputFromPayload(data.PayloadJSON.ValueString())
+	outputReq, diags := outputFromModel(&data)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -143,9 +144,7 @@ func (r *OutputResource) Update(ctx context.Context, req resource.UpdateRequest,
 	}
 
 	mapOutputToResourceModel(created, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalOutputJSON(created))
-	}
+	populateOutputConfiguration(created, &data)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -163,4 +162,32 @@ func (r *OutputResource) Delete(ctx context.Context, req resource.DeleteRequest,
 
 func (r *OutputResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+func outputFromModel(data *OutputResourceModel) (*client.Output, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	var cfg map[string]interface{}
+	if err := json.Unmarshal([]byte(data.ConfigurationJSON.ValueString()), &cfg); err != nil {
+		diags.AddError("Invalid configuration_json", fmt.Sprintf("Failed to parse configuration_json: %v", err))
+		return nil, diags
+	}
+
+	return &client.Output{
+		Title:         data.Title.ValueString(),
+		Type:          data.Type.ValueString(),
+		Configuration: cfg,
+	}, diags
+}
+
+func populateOutputConfiguration(output *client.Output, data *OutputResourceModel) {
+	if output.Configuration == nil {
+		data.ConfigurationJSON = types.StringValue("{}")
+		return
+	}
+	b, err := json.Marshal(output.Configuration)
+	if err != nil {
+		data.ConfigurationJSON = types.StringValue("{}")
+		return
+	}
+	data.ConfigurationJSON = types.StringValue(string(b))
 }

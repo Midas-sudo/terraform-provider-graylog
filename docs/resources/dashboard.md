@@ -14,16 +14,14 @@ Manages a Graylog dashboard object.
 
 ```terraform
 resource "graylog_dashboard" "example" {
-  payload_json = jsonencode({
-    type        = "DASHBOARD"
-    title       = "Terraform Dashboard"
-    summary     = "Dashboard managed by Terraform"
-    description = "A minimal Graylog dashboard payload"
-    search_id   = "existing-search-id"
-    properties  = []
-    requires    = {}
-    state       = {}
-  })
+  title       = "Terraform Dashboard"
+  summary     = "Dashboard managed by Terraform"
+  description = "A minimal Graylog dashboard payload"
+  search_id   = "existing-search-id"
+
+  properties_json = jsonencode([])
+  requires_json   = jsonencode({})
+  state_json      = jsonencode({})
 }
 ```
 
@@ -32,13 +30,18 @@ resource "graylog_dashboard" "example" {
 
 ### Required
 
-- `payload_json` (String) Raw JSON payload for the dashboard entity (without wrapper).
+- `search_id` (String)
+- `title` (String)
+
+### Optional
+
+- `description` (String)
+- `properties_json` (String)
+- `requires_json` (String)
+- `state_json` (String)
+- `summary` (String)
 
 ### Read-Only
 
-- `description` (String)
 - `id` (String) The ID of this resource.
-- `search_id` (String)
-- `summary` (String)
-- `title` (String)
 - `type` (String) Dashboard type reported by Graylog (`DASHBOARD`).

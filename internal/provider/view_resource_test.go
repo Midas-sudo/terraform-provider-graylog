@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package provider
 
 import (
@@ -34,9 +37,6 @@ func TestAccViewResource(t *testing.T) {
 				ResourceName:      "graylog_view.test",
 				ImportState:       true,
 				ImportStateVerify: true,
-				ImportStateVerifyIgnore: []string{
-					"payload_json",
-				},
 			},
 			{
 				Config: testAccViewResourceConfig(updatedTitle, searchID),
@@ -70,9 +70,6 @@ func TestAccDashboardResource(t *testing.T) {
 				ResourceName:      "graylog_dashboard.test",
 				ImportState:       true,
 				ImportStateVerify: true,
-				ImportStateVerifyIgnore: []string{
-					"payload_json",
-				},
 			},
 			{
 				Config: testAccDashboardResourceConfig(updatedTitle, searchID),
@@ -87,14 +84,13 @@ func TestAccDashboardResource(t *testing.T) {
 func testAccViewResourceConfig(title, searchID string) string {
 	return fmt.Sprintf(`
 resource "graylog_view" "test" {
-  payload_json = jsonencode({
-    type        = "SEARCH"
-    title       = %[1]q
-    summary     = "Terraform acceptance view"
-    description = "Terraform acceptance view"
-    search_id   = %[2]q
-    state       = {}
-  })
+  title       = %[1]q
+  summary     = "Terraform acceptance view"
+  description = "Terraform acceptance view"
+  search_id   = %[2]q
+  properties_json = jsonencode([])
+  requires_json   = jsonencode({})
+  state_json  = jsonencode({})
 }
 `, title, searchID)
 }
@@ -102,14 +98,13 @@ resource "graylog_view" "test" {
 func testAccDashboardResourceConfig(title, searchID string) string {
 	return fmt.Sprintf(`
 resource "graylog_dashboard" "test" {
-  payload_json = jsonencode({
-    type        = "DASHBOARD"
-    title       = %[1]q
-    summary     = "Terraform acceptance dashboard"
-    description = "Terraform acceptance dashboard"
-    search_id   = %[2]q
-    state       = {}
-  })
+  title       = %[1]q
+  summary     = "Terraform acceptance dashboard"
+  description = "Terraform acceptance dashboard"
+  search_id   = %[2]q
+  properties_json = jsonencode([])
+  requires_json   = jsonencode({})
+  state_json  = jsonencode({})
 }
 `, title, searchID)
 }

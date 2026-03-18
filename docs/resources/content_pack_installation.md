@@ -16,11 +16,8 @@ Manages a Graylog content pack installation.
 resource "graylog_content_pack_installation" "example" {
   content_pack_id = "90be5e03-cb16-c802-6462-a244b4a342f3"
   revision        = 1
-
-  payload_json = jsonencode({
-    comment    = "Installed by Terraform"
-    parameters = {}
-  })
+  comment         = "Installed by Terraform"
+  parameters_json = jsonencode({})
 }
 ```
 
@@ -30,8 +27,12 @@ resource "graylog_content_pack_installation" "example" {
 ### Required
 
 - `content_pack_id` (String)
-- `payload_json` (String) Raw JSON payload for installation request entity (`comment`, `parameters`).
 - `revision` (Number)
+
+### Optional
+
+- `comment` (String) Optional installation comment.
+- `parameters_json` (String) JSON object with content pack installation parameters.
 
 ### Read-Only
 

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package provider
 
 import (
@@ -64,13 +67,23 @@ func mapEventDefinitionToResourceModel(definition *client.EventDefinition, data 
 	data.Title = types.StringValue(definition.Title)
 	data.Description = types.StringValue(definition.Description)
 	data.State = types.StringValue(definition.State)
+	data.Priority = types.Int64Value(definition.Priority)
+	data.Alert = types.BoolValue(definition.Alert)
 }
 
 func mapEventNotificationToDataSourceModel(notification *client.EventNotification, data *EventNotificationDataSourceModel) {
 	data.ID = types.StringValue(notification.ID)
 	data.Title = types.StringValue(notification.Title)
 	data.Description = types.StringValue(notification.Description)
-	data.PayloadJSON = types.StringValue(marshalEventNotificationJSON(notification))
+	if notification.Config != nil {
+		if b, err := json.Marshal(notification.Config); err == nil {
+			data.ConfigJSON = types.StringValue(string(b))
+		} else {
+			data.ConfigJSON = types.StringValue("{}")
+		}
+	} else {
+		data.ConfigJSON = types.StringValue("{}")
+	}
 }
 
 func mapEventDefinitionToDataSourceModel(definition *client.EventDefinition, data *EventDefinitionDataSourceModel) {
@@ -78,7 +91,44 @@ func mapEventDefinitionToDataSourceModel(definition *client.EventDefinition, dat
 	data.Title = types.StringValue(definition.Title)
 	data.Description = types.StringValue(definition.Description)
 	data.State = types.StringValue(definition.State)
-	data.PayloadJSON = types.StringValue(marshalEventDefinitionJSON(definition))
+	data.Priority = types.Int64Value(definition.Priority)
+	data.Alert = types.BoolValue(definition.Alert)
+	if definition.Config != nil {
+		if b, err := json.Marshal(definition.Config); err == nil {
+			data.ConfigJSON = types.StringValue(string(b))
+		} else {
+			data.ConfigJSON = types.StringValue("{}")
+		}
+	} else {
+		data.ConfigJSON = types.StringValue("{}")
+	}
+	if definition.FieldSpec != nil {
+		if b, err := json.Marshal(definition.FieldSpec); err == nil {
+			data.FieldSpecJSON = types.StringValue(string(b))
+		}
+	}
+	if definition.KeySpec != nil {
+		keySpec := make([]types.String, 0, len(definition.KeySpec))
+		for _, v := range definition.KeySpec {
+			keySpec = append(keySpec, types.StringValue(v))
+		}
+		data.KeySpec = keySpec
+	}
+	if definition.NotificationSettings != nil {
+		if b, err := json.Marshal(definition.NotificationSettings); err == nil {
+			data.NotificationSettingsJSON = types.StringValue(string(b))
+		}
+	}
+	if definition.Notifications != nil {
+		if b, err := json.Marshal(definition.Notifications); err == nil {
+			data.NotificationsJSON = types.StringValue(string(b))
+		}
+	}
+	if definition.Storage != nil {
+		if b, err := json.Marshal(definition.Storage); err == nil {
+			data.StorageJSON = types.StringValue(string(b))
+		}
+	}
 }
 
 func eventDefinitionNotificationIDs(definition *client.EventDefinition) []string {

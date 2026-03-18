@@ -14,22 +14,21 @@ Manages a Graylog lookup data adapter.
 
 ```terraform
 resource "graylog_lookup_data_adapter" "example" {
-  payload_json = jsonencode({
-    title       = "Terraform Lookup Adapter"
-    name        = "terraform-lookup-adapter"
-    description = "Managed by Terraform"
-    config = {
-      type                    = "csvfile"
-      path                    = "/tmp/lookup-table.csv"
-      separator               = ","
-      quotechar               = "\""
-      key_column              = "key"
-      value_column            = "value"
-      check_interval          = 60
-      case_insensitive_lookup = false
-      multi_value_lookup      = false
-      cidr_lookup             = false
-    }
+  title       = "Terraform Lookup Adapter"
+  name        = "terraform-lookup-adapter"
+  description = "Managed by Terraform"
+
+  config_json = jsonencode({
+    type                    = "csvfile"
+    path                    = "/tmp/lookup-table.csv"
+    separator               = ","
+    quotechar               = "\""
+    key_column              = "key"
+    value_column            = "value"
+    check_interval          = 60
+    case_insensitive_lookup = false
+    multi_value_lookup      = false
+    cidr_lookup             = false
   })
 }
 ```
@@ -39,11 +38,17 @@ resource "graylog_lookup_data_adapter" "example" {
 
 ### Required
 
-- `payload_json` (String) Raw JSON payload for the lookup data adapter.
+- `config_json` (String) JSON object with adapter-specific configuration.
+- `name` (String)
+- `title` (String)
+
+### Optional
+
+- `custom_error_ttl` (Number)
+- `custom_error_ttl_enabled` (Boolean)
+- `custom_error_ttl_unit` (String)
+- `description` (String)
 
 ### Read-Only
 
-- `description` (String)
 - `id` (String) The ID of this resource.
-- `name` (String)
-- `title` (String)

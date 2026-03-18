@@ -14,10 +14,8 @@ Manages a Graylog grok pattern.
 
 ```terraform
 resource "graylog_grok_pattern" "example" {
-  payload_json = jsonencode({
-    name    = "TFEXAMPLEPATTERN"
-    pattern = "foo(?<bar>.*)"
-  })
+  name    = "TFEXAMPLEPATTERN"
+  pattern = "foo(?<bar>.*)"
 }
 ```
 
@@ -26,10 +24,9 @@ resource "graylog_grok_pattern" "example" {
 
 ### Required
 
-- `payload_json` (String) Raw JSON payload for the grok pattern object.
+- `name` (String)
+- `pattern` (String)
 
 ### Read-Only
 
 - `id` (String) The ID of this resource.
-- `name` (String)
-- `pattern` (String)

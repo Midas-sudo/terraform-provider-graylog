@@ -14,13 +14,12 @@ Manages a Graylog lookup cache.
 
 ```terraform
 resource "graylog_lookup_cache" "example" {
-  payload_json = jsonencode({
-    title       = "Terraform Lookup Cache"
-    name        = "terraform-lookup-cache"
-    description = "Managed by Terraform"
-    config = {
-      type = "none"
-    }
+  title       = "Terraform Lookup Cache"
+  name        = "terraform-lookup-cache"
+  description = "Managed by Terraform"
+
+  config_json = jsonencode({
+    type = "none"
   })
 }
 ```
@@ -30,11 +29,14 @@ resource "graylog_lookup_cache" "example" {
 
 ### Required
 
-- `payload_json` (String) Raw JSON payload for the lookup cache.
+- `config_json` (String) JSON object with cache-specific configuration.
+- `name` (String)
+- `title` (String)
+
+### Optional
+
+- `description` (String)
 
 ### Read-Only
 
-- `description` (String)
 - `id` (String) The ID of this resource.
-- `name` (String)
-- `title` (String)

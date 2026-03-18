@@ -25,8 +25,10 @@ data "graylog_view" "example" {
 
 - `description` (String)
 - `id` (String) The ID of this resource.
-- `payload_json` (String) Raw JSON payload for the view.
+- `properties_json` (String)
+- `requires_json` (String)
 - `search_id` (String)
+- `state_json` (String)
 - `summary` (String)
 - `title` (String)
 - `type` (String)

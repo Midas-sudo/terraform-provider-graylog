@@ -1,10 +1,15 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -29,11 +34,18 @@ type ExtractorResource struct {
 }
 
 type ExtractorResourceModel struct {
-	ID            types.String `tfsdk:"id"`
-	InputID       types.String `tfsdk:"input_id"`
-	Title         types.String `tfsdk:"title"`
-	ExtractorType types.String `tfsdk:"extractor_type"`
-	PayloadJSON   types.String `tfsdk:"payload_json"`
+	ID                  types.String `tfsdk:"id"`
+	InputID             types.String `tfsdk:"input_id"`
+	Title               types.String `tfsdk:"title"`
+	ExtractorType       types.String `tfsdk:"extractor_type"`
+	CursorStrategy      types.String `tfsdk:"cursor_strategy"`
+	SourceField         types.String `tfsdk:"source_field"`
+	TargetField         types.String `tfsdk:"target_field"`
+	ConditionType       types.String `tfsdk:"condition_type"`
+	ConditionValue      types.String `tfsdk:"condition_value"`
+	Order               types.Int64  `tfsdk:"order"`
+	ExtractorConfigJSON types.String `tfsdk:"extractor_config_json"`
+	ConvertersJSON      types.String `tfsdk:"converters_json"`
 }
 
 func (r *ExtractorResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -54,11 +66,33 @@ func (r *ExtractorResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 				Required:            true,
 				MarkdownDescription: "Graylog input ID that owns this extractor.",
 			},
-			"title":          schema.StringAttribute{Computed: true},
-			"extractor_type": schema.StringAttribute{Computed: true},
-			"payload_json": schema.StringAttribute{
-				Required:            true,
-				MarkdownDescription: "Raw JSON payload for the extractor request body.",
+			"title":          schema.StringAttribute{Required: true},
+			"extractor_type": schema.StringAttribute{Required: true},
+			"cursor_strategy": schema.StringAttribute{
+				Required: true,
+			},
+			"source_field": schema.StringAttribute{
+				Required: true,
+			},
+			"target_field": schema.StringAttribute{
+				Required: true,
+			},
+			"condition_type": schema.StringAttribute{
+				Required: true,
+			},
+			"condition_value": schema.StringAttribute{
+				Optional: true,
+			},
+			"order": schema.Int64Attribute{
+				Optional: true,
+			},
+			"extractor_config_json": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "JSON object with extractor-specific configuration.",
+			},
+			"converters_json": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "JSON array with converter configurations.",
 			},
 		},
 	}
@@ -83,7 +117,7 @@ func (r *ExtractorResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 
-	extractorReq, diags := extractorFromPayload(data.PayloadJSON.ValueString())
+	extractorReq, diags := extractorFromModel(&data)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -96,9 +130,7 @@ func (r *ExtractorResource) Create(ctx context.Context, req resource.CreateReque
 	}
 
 	mapExtractorToResourceModel(created, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalExtractorJSON(created))
-	}
+	populateExtractorJSONFields(created, &data)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -120,9 +152,7 @@ func (r *ExtractorResource) Read(ctx context.Context, req resource.ReadRequest, 
 	}
 
 	mapExtractorToResourceModel(current, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalExtractorJSON(current))
-	}
+	populateExtractorJSONFields(current, &data)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -135,7 +165,7 @@ func (r *ExtractorResource) Update(ctx context.Context, req resource.UpdateReque
 		return
 	}
 
-	extractorReq, diags := extractorFromPayload(data.PayloadJSON.ValueString())
+	extractorReq, diags := extractorFromModel(&data)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -149,9 +179,7 @@ func (r *ExtractorResource) Update(ctx context.Context, req resource.UpdateReque
 
 	data.InputID = state.InputID
 	mapExtractorToResourceModel(updated, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalExtractorJSON(updated))
-	}
+	populateExtractorJSONFields(updated, &data)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -179,4 +207,67 @@ func (r *ExtractorResource) ImportState(ctx context.Context, req resource.Import
 
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("input_id"), parts[0])...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), parts[1])...)
+}
+
+func extractorFromModel(data *ExtractorResourceModel) (*client.Extractor, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	cfg := map[string]interface{}{}
+	if !data.ExtractorConfigJSON.IsNull() && !data.ExtractorConfigJSON.IsUnknown() && data.ExtractorConfigJSON.ValueString() != "" {
+		if err := json.Unmarshal([]byte(data.ExtractorConfigJSON.ValueString()), &cfg); err != nil {
+			diags.AddError("Invalid extractor_config_json", fmt.Sprintf("Failed to parse extractor_config_json: %v", err))
+			return nil, diags
+		}
+	}
+
+	converters := []map[string]interface{}{}
+	if !data.ConvertersJSON.IsNull() && !data.ConvertersJSON.IsUnknown() && data.ConvertersJSON.ValueString() != "" {
+		if err := json.Unmarshal([]byte(data.ConvertersJSON.ValueString()), &converters); err != nil {
+			diags.AddError("Invalid converters_json", fmt.Sprintf("Failed to parse converters_json: %v", err))
+			return nil, diags
+		}
+	}
+
+	req := &client.Extractor{
+		Title:          data.Title.ValueString(),
+		ExtractorType:  data.ExtractorType.ValueString(),
+		CursorStrategy: data.CursorStrategy.ValueString(),
+		SourceField:    data.SourceField.ValueString(),
+		TargetField:    data.TargetField.ValueString(),
+		ExtractorConfig: cfg,
+		ConditionType:  data.ConditionType.ValueString(),
+		Converters:     converters,
+	}
+	if !data.ConditionValue.IsNull() && !data.ConditionValue.IsUnknown() {
+		req.ConditionValue = data.ConditionValue.ValueString()
+	}
+	if !data.Order.IsNull() && !data.Order.IsUnknown() {
+		req.Order = data.Order.ValueInt64()
+	}
+
+	return req, diags
+}
+
+func populateExtractorJSONFields(extractor *client.Extractor, data *ExtractorResourceModel) {
+	cfg := extractor.ExtractorConfig
+	if cfg == nil {
+		cfg = map[string]interface{}{}
+	}
+	cfgB, err := json.Marshal(cfg)
+	if err != nil {
+		data.ExtractorConfigJSON = types.StringValue("{}")
+	} else {
+		data.ExtractorConfigJSON = types.StringValue(string(cfgB))
+	}
+
+	converters := extractor.Converters
+	if converters == nil {
+		converters = []map[string]interface{}{}
+	}
+	convB, err := json.Marshal(converters)
+	if err != nil {
+		data.ConvertersJSON = types.StringValue("[]")
+	} else {
+		data.ConvertersJSON = types.StringValue(string(convB))
+	}
 }

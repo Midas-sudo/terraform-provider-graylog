@@ -88,7 +88,7 @@ Targets **Graylog 6.x** and designed for forward compatibility with **7.x**.
 terraform {
   required_providers {
     graylog = {
-      source = "gmops/graylog"
+      source = "Midas-sudo/graylog"
     }
   }
 }

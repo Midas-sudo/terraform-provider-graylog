@@ -1,9 +1,14 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -28,11 +33,14 @@ type LookupDataAdapterResource struct {
 }
 
 type LookupDataAdapterResourceModel struct {
-	ID          types.String `tfsdk:"id"`
-	Title       types.String `tfsdk:"title"`
-	Name        types.String `tfsdk:"name"`
-	Description types.String `tfsdk:"description"`
-	PayloadJSON types.String `tfsdk:"payload_json"`
+	ID                    types.String `tfsdk:"id"`
+	Title                 types.String `tfsdk:"title"`
+	Name                  types.String `tfsdk:"name"`
+	Description           types.String `tfsdk:"description"`
+	ConfigJSON            types.String `tfsdk:"config_json"`
+	CustomErrorTTLEnabled types.Bool   `tfsdk:"custom_error_ttl_enabled"`
+	CustomErrorTTL        types.Int64  `tfsdk:"custom_error_ttl"`
+	CustomErrorTTLUnit    types.String `tfsdk:"custom_error_ttl_unit"`
 }
 
 func (r *LookupDataAdapterResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -49,12 +57,21 @@ func (r *LookupDataAdapterResource) Schema(_ context.Context, _ resource.SchemaR
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"title":       schema.StringAttribute{Computed: true},
-			"name":        schema.StringAttribute{Computed: true},
-			"description": schema.StringAttribute{Computed: true},
-			"payload_json": schema.StringAttribute{
+			"title":       schema.StringAttribute{Required: true},
+			"name":        schema.StringAttribute{Required: true},
+			"description": schema.StringAttribute{Optional: true},
+			"config_json": schema.StringAttribute{
 				Required:            true,
-				MarkdownDescription: "Raw JSON payload for the lookup data adapter.",
+				MarkdownDescription: "JSON object with adapter-specific configuration.",
+			},
+			"custom_error_ttl_enabled": schema.BoolAttribute{
+				Optional: true,
+			},
+			"custom_error_ttl": schema.Int64Attribute{
+				Optional: true,
+			},
+			"custom_error_ttl_unit": schema.StringAttribute{
+				Optional: true,
 			},
 		},
 	}
@@ -79,7 +96,7 @@ func (r *LookupDataAdapterResource) Create(ctx context.Context, req resource.Cre
 		return
 	}
 
-	adapterReq, diags := lookupDataAdapterFromPayload(data.PayloadJSON.ValueString())
+	adapterReq, diags := lookupDataAdapterFromModel(&data)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -92,9 +109,7 @@ func (r *LookupDataAdapterResource) Create(ctx context.Context, req resource.Cre
 	}
 
 	mapLookupDataAdapterToResourceModel(created, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalLookupDataAdapterJSON(created))
-	}
+	populateLookupDataAdapterConfig(created, &data)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -116,9 +131,7 @@ func (r *LookupDataAdapterResource) Read(ctx context.Context, req resource.ReadR
 	}
 
 	mapLookupDataAdapterToResourceModel(current, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalLookupDataAdapterJSON(current))
-	}
+	populateLookupDataAdapterConfig(current, &data)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -131,7 +144,7 @@ func (r *LookupDataAdapterResource) Update(ctx context.Context, req resource.Upd
 		return
 	}
 
-	adapterReq, diags := lookupDataAdapterFromPayload(data.PayloadJSON.ValueString())
+	adapterReq, diags := lookupDataAdapterFromModel(&data)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -144,9 +157,7 @@ func (r *LookupDataAdapterResource) Update(ctx context.Context, req resource.Upd
 	}
 
 	mapLookupDataAdapterToResourceModel(updated, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalLookupDataAdapterJSON(updated))
-	}
+	populateLookupDataAdapterConfig(updated, &data)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -164,4 +175,49 @@ func (r *LookupDataAdapterResource) Delete(ctx context.Context, req resource.Del
 
 func (r *LookupDataAdapterResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+func lookupDataAdapterFromModel(data *LookupDataAdapterResourceModel) (*client.LookupDataAdapter, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	var cfg map[string]interface{}
+
+	if err := json.Unmarshal([]byte(data.ConfigJSON.ValueString()), &cfg); err != nil {
+		diags.AddError("Invalid config_json", fmt.Sprintf("Failed to parse config_json: %v", err))
+		return nil, diags
+	}
+
+	adapter := &client.LookupDataAdapter{
+		Title:  data.Title.ValueString(),
+		Name:   data.Name.ValueString(),
+		Config: cfg,
+	}
+	if !data.Description.IsNull() && !data.Description.IsUnknown() {
+		adapter.Description = data.Description.ValueString()
+	}
+	if !data.CustomErrorTTLEnabled.IsNull() && !data.CustomErrorTTLEnabled.IsUnknown() {
+		v := data.CustomErrorTTLEnabled.ValueBool()
+		adapter.CustomErrorTTLEnabled = &v
+	}
+	if !data.CustomErrorTTL.IsNull() && !data.CustomErrorTTL.IsUnknown() {
+		v := data.CustomErrorTTL.ValueInt64()
+		adapter.CustomErrorTTL = &v
+	}
+	if !data.CustomErrorTTLUnit.IsNull() && !data.CustomErrorTTLUnit.IsUnknown() {
+		v := data.CustomErrorTTLUnit.ValueString()
+		adapter.CustomErrorTTLUnit = &v
+	}
+	return adapter, diags
+}
+
+func populateLookupDataAdapterConfig(adapter *client.LookupDataAdapter, data *LookupDataAdapterResourceModel) {
+	if adapter.Config == nil {
+		data.ConfigJSON = types.StringValue("{}")
+	} else {
+		b, err := json.Marshal(adapter.Config)
+		if err != nil {
+			data.ConfigJSON = types.StringValue("{}")
+		} else {
+			data.ConfigJSON = types.StringValue(string(b))
+		}
+	}
 }

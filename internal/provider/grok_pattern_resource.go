@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package provider
 
 import (
@@ -28,10 +31,9 @@ type GrokPatternResource struct {
 }
 
 type GrokPatternResourceModel struct {
-	ID          types.String `tfsdk:"id"`
-	Name        types.String `tfsdk:"name"`
-	Pattern     types.String `tfsdk:"pattern"`
-	PayloadJSON types.String `tfsdk:"payload_json"`
+	ID      types.String `tfsdk:"id"`
+	Name    types.String `tfsdk:"name"`
+	Pattern types.String `tfsdk:"pattern"`
 }
 
 func (r *GrokPatternResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -48,12 +50,8 @@ func (r *GrokPatternResource) Schema(_ context.Context, _ resource.SchemaRequest
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"name":    schema.StringAttribute{Computed: true},
-			"pattern": schema.StringAttribute{Computed: true},
-			"payload_json": schema.StringAttribute{
-				Required:            true,
-				MarkdownDescription: "Raw JSON payload for the grok pattern object.",
-			},
+			"name":    schema.StringAttribute{Required: true},
+			"pattern": schema.StringAttribute{Required: true},
 		},
 	}
 }
@@ -77,10 +75,9 @@ func (r *GrokPatternResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	patternReq, diags := grokPatternFromPayload(data.PayloadJSON.ValueString())
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
+	patternReq := &client.GrokPattern{
+		Name:    data.Name.ValueString(),
+		Pattern: data.Pattern.ValueString(),
 	}
 
 	created, err := r.client.CreateGrokPattern(ctx, patternReq)
@@ -90,9 +87,6 @@ func (r *GrokPatternResource) Create(ctx context.Context, req resource.CreateReq
 	}
 
 	mapGrokPatternToResourceModel(created, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalGrokPatternJSON(created))
-	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -114,9 +108,6 @@ func (r *GrokPatternResource) Read(ctx context.Context, req resource.ReadRequest
 	}
 
 	mapGrokPatternToResourceModel(current, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalGrokPatternJSON(current))
-	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -129,10 +120,9 @@ func (r *GrokPatternResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	patternReq, diags := grokPatternFromPayload(data.PayloadJSON.ValueString())
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
+	patternReq := &client.GrokPattern{
+		Name:    data.Name.ValueString(),
+		Pattern: data.Pattern.ValueString(),
 	}
 
 	updated, err := r.client.UpdateGrokPattern(ctx, state.ID.ValueString(), patternReq)
@@ -142,9 +132,6 @@ func (r *GrokPatternResource) Update(ctx context.Context, req resource.UpdateReq
 	}
 
 	mapGrokPatternToResourceModel(updated, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalGrokPatternJSON(updated))
-	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package provider
 
 import (
@@ -28,13 +31,15 @@ type ViewResource struct {
 }
 
 type ViewResourceModel struct {
-	ID          types.String `tfsdk:"id"`
-	Type        types.String `tfsdk:"type"`
-	Title       types.String `tfsdk:"title"`
-	Summary     types.String `tfsdk:"summary"`
-	Description types.String `tfsdk:"description"`
-	SearchID    types.String `tfsdk:"search_id"`
-	PayloadJSON types.String `tfsdk:"payload_json"`
+	ID             types.String `tfsdk:"id"`
+	Type           types.String `tfsdk:"type"`
+	Title          types.String `tfsdk:"title"`
+	Summary        types.String `tfsdk:"summary"`
+	Description    types.String `tfsdk:"description"`
+	SearchID       types.String `tfsdk:"search_id"`
+	StateJSON      types.String `tfsdk:"state_json"`
+	PropertiesJSON types.String `tfsdk:"properties_json"`
+	RequiresJSON   types.String `tfsdk:"requires_json"`
 }
 
 func (r *ViewResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -56,24 +61,30 @@ func (r *ViewResource) Schema(_ context.Context, _ resource.SchemaRequest, resp 
 				MarkdownDescription: "View type reported by Graylog (e.g. `SEARCH`).",
 			},
 			"title": schema.StringAttribute{
-				Computed:            true,
+				Required:            true,
 				MarkdownDescription: "View title.",
 			},
 			"summary": schema.StringAttribute{
-				Computed:            true,
+				Optional:            true,
 				MarkdownDescription: "View summary.",
 			},
 			"description": schema.StringAttribute{
-				Computed:            true,
+				Optional:            true,
 				MarkdownDescription: "View description.",
 			},
 			"search_id": schema.StringAttribute{
-				Computed:            true,
+				Required:            true,
 				MarkdownDescription: "Associated search ID.",
 			},
-			"payload_json": schema.StringAttribute{
-				Required:            true,
-				MarkdownDescription: "Raw JSON payload for the view entity (without wrapper).",
+			"state_json": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "JSON object describing the view state.",
+			},
+			"properties_json": schema.StringAttribute{
+				Optional: true,
+			},
+			"requires_json": schema.StringAttribute{
+				Optional: true,
 			},
 		},
 	}
@@ -99,7 +110,7 @@ func (r *ViewResource) Create(ctx context.Context, req resource.CreateRequest, r
 		return
 	}
 
-	viewReq, diags := viewFromPayload(data.PayloadJSON.ValueString())
+	viewReq, diags := viewFromModel(&data, "SEARCH")
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -112,9 +123,6 @@ func (r *ViewResource) Create(ctx context.Context, req resource.CreateRequest, r
 	}
 
 	mapViewToModel(created, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalViewJSON(created))
-	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -136,9 +144,7 @@ func (r *ViewResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 	}
 
 	mapViewToModel(current, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalViewJSON(current))
-	}
+	populateViewJSONFields(current, &data)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -151,7 +157,7 @@ func (r *ViewResource) Update(ctx context.Context, req resource.UpdateRequest, r
 		return
 	}
 
-	viewReq, diags := viewFromPayload(data.PayloadJSON.ValueString())
+	viewReq, diags := viewFromModel(&data, "SEARCH")
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -164,9 +170,6 @@ func (r *ViewResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	}
 
 	mapViewToModel(updated, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalViewJSON(updated))
-	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 

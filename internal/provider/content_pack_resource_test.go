@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package provider
 
 import (
@@ -41,9 +44,6 @@ func TestAccContentPackResource(t *testing.T) {
 				ImportState:       true,
 				ImportStateIdFunc: testAccContentPackImportIDFunc("graylog_content_pack.test"),
 				ImportStateVerify: true,
-				ImportStateVerifyIgnore: []string{
-					"payload_json",
-				},
 			},
 			{
 				Config: testAccContentPackResourceConfig(uuid, 1, updatedName),
@@ -77,9 +77,6 @@ func TestAccContentPackInstallationResource(t *testing.T) {
 				ImportState:       true,
 				ImportStateIdFunc: testAccContentPackInstallationImportIDFunc("graylog_content_pack_installation.test"),
 				ImportStateVerify: true,
-				ImportStateVerifyIgnore: []string{
-					"payload_json",
-				},
 			},
 			{
 				Config: testAccContentPackInstallationResourceConfig(contentPackID, revision, updatedComment),
@@ -95,18 +92,16 @@ func TestAccContentPackInstallationResource(t *testing.T) {
 func testAccContentPackResourceConfig(contentPackID string, revision int64, name string) string {
 	return fmt.Sprintf(`
 resource "graylog_content_pack" "test" {
-  payload_json = jsonencode({
-    id          = %[1]q
-    v           = "1"
-    rev         = %[2]d
-    name        = %[3]q
-    summary     = "Terraform content pack"
-    description = "Terraform acceptance content pack"
-    vendor      = "Terraform"
-    url         = "https://example.org"
-    parameters  = []
-    entities    = []
-  })
+  content_pack_id = %[1]q
+  v               = "1"
+  revision        = %[2]d
+  name            = %[3]q
+  summary         = "Terraform content pack"
+  description     = "Terraform acceptance content pack"
+  vendor          = "Terraform"
+  url             = "https://example.org"
+  parameters_json = jsonencode([])
+  entities_json   = jsonencode([])
 }
 `, contentPackID, revision, name)
 }
@@ -116,10 +111,8 @@ func testAccContentPackInstallationResourceConfig(contentPackID string, revision
 resource "graylog_content_pack_installation" "test" {
   content_pack_id = %[1]q
   revision        = %[2]d
-  payload_json = jsonencode({
-    comment    = %[3]q
-    parameters = {}
-  })
+  comment         = %[3]q
+  parameters_json = jsonencode({})
 }
 `, contentPackID, revision, comment)
 }

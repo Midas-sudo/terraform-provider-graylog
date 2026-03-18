@@ -29,6 +29,12 @@ data "graylog_content_packs" "example" {}
 Read-Only:
 
 - `content_pack_id` (String)
+- `description` (String)
+- `entities_json` (String)
 - `name` (String)
-- `payload_json` (String)
+- `parameters_json` (String)
 - `revision` (Number)
+- `summary` (String)
+- `url` (String)
+- `v` (String)
+- `vendor` (String)

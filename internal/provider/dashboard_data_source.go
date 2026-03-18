@@ -1,7 +1,11 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -22,13 +26,15 @@ type DashboardDataSource struct {
 }
 
 type DashboardDataSourceModel struct {
-	ID          types.String `tfsdk:"id"`
-	Type        types.String `tfsdk:"type"`
-	Title       types.String `tfsdk:"title"`
-	Summary     types.String `tfsdk:"summary"`
-	Description types.String `tfsdk:"description"`
-	SearchID    types.String `tfsdk:"search_id"`
-	PayloadJSON types.String `tfsdk:"payload_json"`
+	ID             types.String `tfsdk:"id"`
+	Type           types.String `tfsdk:"type"`
+	Title          types.String `tfsdk:"title"`
+	Summary        types.String `tfsdk:"summary"`
+	Description    types.String `tfsdk:"description"`
+	SearchID       types.String `tfsdk:"search_id"`
+	StateJSON      types.String `tfsdk:"state_json"`
+	PropertiesJSON types.String `tfsdk:"properties_json"`
+	RequiresJSON   types.String `tfsdk:"requires_json"`
 }
 
 func (d *DashboardDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -44,10 +50,10 @@ func (d *DashboardDataSource) Schema(_ context.Context, _ datasource.SchemaReque
 			"title":       schema.StringAttribute{Computed: true},
 			"summary":     schema.StringAttribute{Computed: true},
 			"description": schema.StringAttribute{Computed: true},
-			"search_id":   schema.StringAttribute{Computed: true},
-			"payload_json": schema.StringAttribute{
-				Computed: true,
-			},
+			"search_id":       schema.StringAttribute{Computed: true},
+			"state_json":      schema.StringAttribute{Computed: true},
+			"properties_json": schema.StringAttribute{Computed: true},
+			"requires_json":   schema.StringAttribute{Computed: true},
 		},
 	}
 }
@@ -113,8 +119,10 @@ func (d *DashboardsDataSource) Schema(_ context.Context, _ datasource.SchemaRequ
 						"title":        schema.StringAttribute{Computed: true},
 						"summary":      schema.StringAttribute{Computed: true},
 						"description":  schema.StringAttribute{Computed: true},
-						"search_id":    schema.StringAttribute{Computed: true},
-						"payload_json": schema.StringAttribute{Computed: true},
+						"search_id":       schema.StringAttribute{Computed: true},
+						"state_json":      schema.StringAttribute{Computed: true},
+						"properties_json": schema.StringAttribute{Computed: true},
+						"requires_json":   schema.StringAttribute{Computed: true},
 					},
 				},
 			},
@@ -159,5 +167,19 @@ func mapDashboardDataSource(v *client.View, d *DashboardDataSourceModel) {
 	d.Summary = types.StringValue(v.Summary)
 	d.Description = types.StringValue(v.Description)
 	d.SearchID = types.StringValue(v.SearchID)
-	d.PayloadJSON = types.StringValue(marshalViewJSON(v))
+	if v.State != nil {
+		if b, err := json.Marshal(v.State); err == nil {
+			d.StateJSON = types.StringValue(string(b))
+		}
+	}
+	if v.Properties != nil {
+		if b, err := json.Marshal(v.Properties); err == nil {
+			d.PropertiesJSON = types.StringValue(string(b))
+		}
+	}
+	if v.Requires != nil {
+		if b, err := json.Marshal(v.Requires); err == nil {
+			d.RequiresJSON = types.StringValue(string(b))
+		}
+	}
 }

@@ -1,9 +1,14 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -32,7 +37,7 @@ type LookupCacheResourceModel struct {
 	Title       types.String `tfsdk:"title"`
 	Name        types.String `tfsdk:"name"`
 	Description types.String `tfsdk:"description"`
-	PayloadJSON types.String `tfsdk:"payload_json"`
+	ConfigJSON  types.String `tfsdk:"config_json"`
 }
 
 func (r *LookupCacheResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -49,12 +54,12 @@ func (r *LookupCacheResource) Schema(_ context.Context, _ resource.SchemaRequest
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"title":       schema.StringAttribute{Computed: true},
-			"name":        schema.StringAttribute{Computed: true},
-			"description": schema.StringAttribute{Computed: true},
-			"payload_json": schema.StringAttribute{
+			"title":       schema.StringAttribute{Required: true},
+			"name":        schema.StringAttribute{Required: true},
+			"description": schema.StringAttribute{Optional: true},
+			"config_json": schema.StringAttribute{
 				Required:            true,
-				MarkdownDescription: "Raw JSON payload for the lookup cache.",
+				MarkdownDescription: "JSON object with cache-specific configuration.",
 			},
 		},
 	}
@@ -79,7 +84,7 @@ func (r *LookupCacheResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	cacheReq, diags := lookupCacheFromPayload(data.PayloadJSON.ValueString())
+	cacheReq, diags := lookupCacheFromModel(&data)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -92,9 +97,7 @@ func (r *LookupCacheResource) Create(ctx context.Context, req resource.CreateReq
 	}
 
 	mapLookupCacheToResourceModel(created, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalLookupCacheJSON(created))
-	}
+	populateLookupCacheConfig(created, &data)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -116,9 +119,7 @@ func (r *LookupCacheResource) Read(ctx context.Context, req resource.ReadRequest
 	}
 
 	mapLookupCacheToResourceModel(current, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalLookupCacheJSON(current))
-	}
+	populateLookupCacheConfig(current, &data)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -131,7 +132,7 @@ func (r *LookupCacheResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	cacheReq, diags := lookupCacheFromPayload(data.PayloadJSON.ValueString())
+	cacheReq, diags := lookupCacheFromModel(&data)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -144,9 +145,7 @@ func (r *LookupCacheResource) Update(ctx context.Context, req resource.UpdateReq
 	}
 
 	mapLookupCacheToResourceModel(updated, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalLookupCacheJSON(updated))
-	}
+	populateLookupCacheConfig(updated, &data)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -164,4 +163,37 @@ func (r *LookupCacheResource) Delete(ctx context.Context, req resource.DeleteReq
 
 func (r *LookupCacheResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+func lookupCacheFromModel(data *LookupCacheResourceModel) (*client.LookupCache, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	var cfg map[string]interface{}
+
+	if err := json.Unmarshal([]byte(data.ConfigJSON.ValueString()), &cfg); err != nil {
+		diags.AddError("Invalid config_json", fmt.Sprintf("Failed to parse config_json: %v", err))
+		return nil, diags
+	}
+
+	cache := &client.LookupCache{
+		Title:  data.Title.ValueString(),
+		Name:   data.Name.ValueString(),
+		Config: cfg,
+	}
+	if !data.Description.IsNull() && !data.Description.IsUnknown() {
+		cache.Description = data.Description.ValueString()
+	}
+	return cache, diags
+}
+
+func populateLookupCacheConfig(cache *client.LookupCache, data *LookupCacheResourceModel) {
+	if cache.Config == nil {
+		data.ConfigJSON = types.StringValue("{}")
+		return
+	}
+	b, err := json.Marshal(cache.Config)
+	if err != nil {
+		data.ConfigJSON = types.StringValue("{}")
+		return
+	}
+	data.ConfigJSON = types.StringValue(string(b))
 }

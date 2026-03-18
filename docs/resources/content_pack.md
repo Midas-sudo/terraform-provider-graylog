@@ -14,18 +14,16 @@ Manages a Graylog content pack revision.
 
 ```terraform
 resource "graylog_content_pack" "example" {
-  payload_json = jsonencode({
-    id          = "00000000-0000-0000-0000-000000000001"
-    v           = "1"
-    rev         = 1
-    name        = "Terraform Content Pack Example"
-    summary     = "Example content pack created by Terraform"
-    description = "Example content pack payload"
-    vendor      = "Terraform"
-    url         = "https://example.org"
-    parameters  = []
-    entities    = []
-  })
+  content_pack_id = "00000000-0000-0000-0000-000000000001"
+  v               = "1"
+  revision        = 1
+  name            = "Terraform Content Pack Example"
+  summary         = "Example content pack created by Terraform"
+  description     = "Example content pack payload"
+  vendor          = "Terraform"
+  url             = "https://example.org"
+  parameters_json = jsonencode([])
+  entities_json   = jsonencode([])
 }
 ```
 
@@ -34,11 +32,20 @@ resource "graylog_content_pack" "example" {
 
 ### Required
 
-- `payload_json` (String) Raw JSON payload for content pack creation.
+- `content_pack_id` (String)
+- `name` (String)
+- `revision` (Number)
+- `v` (String)
+
+### Optional
+
+- `description` (String)
+- `entities_json` (String)
+- `parameters_json` (String)
+- `summary` (String)
+- `url` (String)
+- `vendor` (String)
 
 ### Read-Only
 
-- `content_pack_id` (String)
 - `id` (String) Composite ID formatted as `content_pack_id/revision`.
-- `name` (String)
-- `revision` (Number)

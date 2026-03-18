@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package provider
 
 import (
@@ -78,6 +81,21 @@ func mapLookupDataAdapterToResourceModel(adapter *client.LookupDataAdapter, data
 	data.Title = types.StringValue(adapter.Title)
 	data.Name = types.StringValue(adapter.Name)
 	data.Description = types.StringValue(adapter.Description)
+	if adapter.CustomErrorTTLEnabled != nil {
+		data.CustomErrorTTLEnabled = types.BoolValue(*adapter.CustomErrorTTLEnabled)
+	} else {
+		data.CustomErrorTTLEnabled = types.BoolNull()
+	}
+	if adapter.CustomErrorTTL != nil {
+		data.CustomErrorTTL = types.Int64Value(*adapter.CustomErrorTTL)
+	} else {
+		data.CustomErrorTTL = types.Int64Null()
+	}
+	if adapter.CustomErrorTTLUnit != nil {
+		data.CustomErrorTTLUnit = types.StringValue(*adapter.CustomErrorTTLUnit)
+	} else {
+		data.CustomErrorTTLUnit = types.StringNull()
+	}
 }
 
 func mapLookupCacheToResourceModel(cache *client.LookupCache, data *LookupCacheResourceModel) {
@@ -94,6 +112,10 @@ func mapLookupTableToResourceModel(table *client.LookupTable, data *LookupTableR
 	data.Description = types.StringValue(table.Description)
 	data.CacheID = types.StringValue(table.CacheID)
 	data.DataAdapterID = types.StringValue(table.DataAdapterID)
+	data.DefaultSingleValue = types.StringValue(table.DefaultSingleValue)
+	data.DefaultSingleValueType = types.StringValue(table.DefaultSingleType)
+	data.DefaultMultiValue = types.StringValue(table.DefaultMultiValue)
+	data.DefaultMultiValueType = types.StringValue(table.DefaultMultiType)
 }
 
 func mapLookupDataAdapterToDataSourceModel(adapter *client.LookupDataAdapter, data *LookupDataAdapterDataSourceModel) {
@@ -101,7 +123,30 @@ func mapLookupDataAdapterToDataSourceModel(adapter *client.LookupDataAdapter, da
 	data.Title = types.StringValue(adapter.Title)
 	data.Name = types.StringValue(adapter.Name)
 	data.Description = types.StringValue(adapter.Description)
-	data.PayloadJSON = types.StringValue(marshalLookupDataAdapterJSON(adapter))
+	if adapter.Config != nil {
+		if b, err := json.Marshal(adapter.Config); err == nil {
+			data.ConfigJSON = types.StringValue(string(b))
+		} else {
+			data.ConfigJSON = types.StringValue("{}")
+		}
+	} else {
+		data.ConfigJSON = types.StringValue("{}")
+	}
+	if adapter.CustomErrorTTLEnabled != nil {
+		data.CustomErrorTTLEnabled = types.BoolValue(*adapter.CustomErrorTTLEnabled)
+	} else {
+		data.CustomErrorTTLEnabled = types.BoolNull()
+	}
+	if adapter.CustomErrorTTL != nil {
+		data.CustomErrorTTL = types.Int64Value(*adapter.CustomErrorTTL)
+	} else {
+		data.CustomErrorTTL = types.Int64Null()
+	}
+	if adapter.CustomErrorTTLUnit != nil {
+		data.CustomErrorTTLUnit = types.StringValue(*adapter.CustomErrorTTLUnit)
+	} else {
+		data.CustomErrorTTLUnit = types.StringNull()
+	}
 }
 
 func mapLookupCacheToDataSourceModel(cache *client.LookupCache, data *LookupCacheDataSourceModel) {
@@ -109,7 +154,15 @@ func mapLookupCacheToDataSourceModel(cache *client.LookupCache, data *LookupCach
 	data.Title = types.StringValue(cache.Title)
 	data.Name = types.StringValue(cache.Name)
 	data.Description = types.StringValue(cache.Description)
-	data.PayloadJSON = types.StringValue(marshalLookupCacheJSON(cache))
+	if cache.Config != nil {
+		if b, err := json.Marshal(cache.Config); err == nil {
+			data.ConfigJSON = types.StringValue(string(b))
+		} else {
+			data.ConfigJSON = types.StringValue("{}")
+		}
+	} else {
+		data.ConfigJSON = types.StringValue("{}")
+	}
 }
 
 func mapLookupTableToDataSourceModel(table *client.LookupTable, data *LookupTableDataSourceModel) {
@@ -119,5 +172,8 @@ func mapLookupTableToDataSourceModel(table *client.LookupTable, data *LookupTabl
 	data.Description = types.StringValue(table.Description)
 	data.CacheID = types.StringValue(table.CacheID)
 	data.DataAdapterID = types.StringValue(table.DataAdapterID)
-	data.PayloadJSON = types.StringValue(marshalLookupTableJSON(table))
+	data.DefaultSingleValue = types.StringValue(table.DefaultSingleValue)
+	data.DefaultSingleValueType = types.StringValue(table.DefaultSingleType)
+	data.DefaultMultiValue = types.StringValue(table.DefaultMultiValue)
+	data.DefaultMultiValueType = types.StringValue(table.DefaultMultiType)
 }

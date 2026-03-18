@@ -28,8 +28,8 @@ data "graylog_lookup_caches" "example" {}
 
 Read-Only:
 
+- `config_json` (String)
 - `description` (String)
 - `id` (String)
 - `name` (String)
-- `payload_json` (String)
 - `title` (String)

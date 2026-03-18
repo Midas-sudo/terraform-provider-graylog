@@ -14,13 +14,12 @@ Manages a Graylog event notification.
 
 ```terraform
 resource "graylog_event_notification" "example" {
-  payload_json = jsonencode({
-    title       = "Terraform Event Notification"
-    description = "Managed by Terraform"
-    config = {
-      type = "http-notification-v1"
-      url  = "https://example.org/graylog/events"
-    }
+  title       = "Terraform Event Notification"
+  description = "Managed by Terraform"
+
+  config_json = jsonencode({
+    type = "http-notification-v1"
+    url  = "https://example.org/graylog/events"
   })
 }
 ```
@@ -30,10 +29,13 @@ resource "graylog_event_notification" "example" {
 
 ### Required
 
-- `payload_json` (String) Raw JSON payload for the event notification entity (without wrapper).
+- `config_json` (String) JSON object with notification-specific configuration.
+- `title` (String) Notification title.
+
+### Optional
+
+- `description` (String) Notification description.
 
 ### Read-Only
 
-- `description` (String) Notification description.
 - `id` (String) The ID of this resource.
-- `title` (String) Notification title.

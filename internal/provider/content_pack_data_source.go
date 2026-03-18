@@ -1,7 +1,11 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -22,10 +26,16 @@ type ContentPackDataSource struct {
 }
 
 type ContentPackDataSourceModel struct {
-	ContentPackID types.String `tfsdk:"content_pack_id"`
-	Revision      types.Int64  `tfsdk:"revision"`
-	Name          types.String `tfsdk:"name"`
-	PayloadJSON   types.String `tfsdk:"payload_json"`
+	ContentPackID  types.String `tfsdk:"content_pack_id"`
+	Revision       types.Int64  `tfsdk:"revision"`
+	V              types.String `tfsdk:"v"`
+	Name           types.String `tfsdk:"name"`
+	Summary        types.String `tfsdk:"summary"`
+	Description    types.String `tfsdk:"description"`
+	Vendor         types.String `tfsdk:"vendor"`
+	URL            types.String `tfsdk:"url"`
+	ParametersJSON types.String `tfsdk:"parameters_json"`
+	EntitiesJSON   types.String `tfsdk:"entities_json"`
 }
 
 func (d *ContentPackDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -45,9 +55,13 @@ func (d *ContentPackDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 			"name": schema.StringAttribute{
 				Computed: true,
 			},
-			"payload_json": schema.StringAttribute{
-				Computed: true,
-			},
+			"v":               schema.StringAttribute{Computed: true},
+			"summary":         schema.StringAttribute{Computed: true},
+			"description":     schema.StringAttribute{Computed: true},
+			"vendor":          schema.StringAttribute{Computed: true},
+			"url":             schema.StringAttribute{Computed: true},
+			"parameters_json": schema.StringAttribute{Computed: true},
+			"entities_json":   schema.StringAttribute{Computed: true},
 		},
 	}
 }
@@ -79,8 +93,18 @@ func (d *ContentPackDataSource) Read(ctx context.Context, req datasource.ReadReq
 
 	data.ContentPackID = types.StringValue(contentPack.ID)
 	data.Revision = types.Int64Value(contentPack.Rev)
+	data.V = types.StringValue(contentPack.V)
 	data.Name = types.StringValue(contentPack.Name)
-	data.PayloadJSON = types.StringValue(marshalContentPackJSON(contentPack))
+	data.Summary = types.StringValue(contentPack.Summary)
+	data.Description = types.StringValue(contentPack.Description)
+	data.Vendor = types.StringValue(contentPack.Vendor)
+	data.URL = types.StringValue(contentPack.URL)
+	if b, err := json.Marshal(contentPack.Parameters); err == nil {
+		data.ParametersJSON = types.StringValue(string(b))
+	}
+	if b, err := json.Marshal(contentPack.Entities); err == nil {
+		data.EntitiesJSON = types.StringValue(string(b))
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -112,8 +136,14 @@ func (d *ContentPacksDataSource) Schema(_ context.Context, _ datasource.SchemaRe
 					Attributes: map[string]schema.Attribute{
 						"content_pack_id": schema.StringAttribute{Computed: true},
 						"revision":        schema.Int64Attribute{Computed: true},
+						"v":               schema.StringAttribute{Computed: true},
 						"name":            schema.StringAttribute{Computed: true},
-						"payload_json":    schema.StringAttribute{Computed: true},
+						"summary":         schema.StringAttribute{Computed: true},
+						"description":     schema.StringAttribute{Computed: true},
+						"vendor":          schema.StringAttribute{Computed: true},
+						"url":             schema.StringAttribute{Computed: true},
+						"parameters_json": schema.StringAttribute{Computed: true},
+						"entities_json":   schema.StringAttribute{Computed: true},
 					},
 				},
 			},
@@ -145,8 +175,18 @@ func (d *ContentPacksDataSource) Read(ctx context.Context, _ datasource.ReadRequ
 		row := ContentPackDataSourceModel{
 			ContentPackID: types.StringValue(cp.ID),
 			Revision:      types.Int64Value(cp.Rev),
+			V:             types.StringValue(cp.V),
 			Name:          types.StringValue(cp.Name),
-			PayloadJSON:   types.StringValue(marshalContentPackJSON(&cp)),
+			Summary:       types.StringValue(cp.Summary),
+			Description:   types.StringValue(cp.Description),
+			Vendor:        types.StringValue(cp.Vendor),
+			URL:           types.StringValue(cp.URL),
+		}
+		if b, err := json.Marshal(cp.Parameters); err == nil {
+			row.ParametersJSON = types.StringValue(string(b))
+		}
+		if b, err := json.Marshal(cp.Entities); err == nil {
+			row.EntitiesJSON = types.StringValue(string(b))
 		}
 		data.ContentPacks = append(data.ContentPacks, row)
 	}

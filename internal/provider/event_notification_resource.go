@@ -1,9 +1,14 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -31,7 +36,7 @@ type EventNotificationResourceModel struct {
 	ID          types.String `tfsdk:"id"`
 	Title       types.String `tfsdk:"title"`
 	Description types.String `tfsdk:"description"`
-	PayloadJSON types.String `tfsdk:"payload_json"`
+	ConfigJSON  types.String `tfsdk:"config_json"`
 }
 
 func (r *EventNotificationResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -49,16 +54,16 @@ func (r *EventNotificationResource) Schema(_ context.Context, _ resource.SchemaR
 				},
 			},
 			"title": schema.StringAttribute{
-				Computed:            true,
+				Required:            true,
 				MarkdownDescription: "Notification title.",
 			},
 			"description": schema.StringAttribute{
-				Computed:            true,
+				Optional:            true,
 				MarkdownDescription: "Notification description.",
 			},
-			"payload_json": schema.StringAttribute{
+			"config_json": schema.StringAttribute{
 				Required:            true,
-				MarkdownDescription: "Raw JSON payload for the event notification entity (without wrapper).",
+				MarkdownDescription: "JSON object with notification-specific configuration.",
 			},
 		},
 	}
@@ -84,7 +89,7 @@ func (r *EventNotificationResource) Create(ctx context.Context, req resource.Cre
 		return
 	}
 
-	notificationReq, diags := eventNotificationFromPayload(data.PayloadJSON.ValueString())
+	notificationReq, diags := eventNotificationFromModel(&data)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -97,9 +102,7 @@ func (r *EventNotificationResource) Create(ctx context.Context, req resource.Cre
 	}
 
 	mapEventNotificationToResourceModel(created, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalEventNotificationJSON(created))
-	}
+	populateEventNotificationConfig(created, &data)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -121,9 +124,7 @@ func (r *EventNotificationResource) Read(ctx context.Context, req resource.ReadR
 	}
 
 	mapEventNotificationToResourceModel(current, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalEventNotificationJSON(current))
-	}
+	populateEventNotificationConfig(current, &data)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -136,7 +137,7 @@ func (r *EventNotificationResource) Update(ctx context.Context, req resource.Upd
 		return
 	}
 
-	notificationReq, diags := eventNotificationFromPayload(data.PayloadJSON.ValueString())
+	notificationReq, diags := eventNotificationFromModel(&data)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -149,9 +150,7 @@ func (r *EventNotificationResource) Update(ctx context.Context, req resource.Upd
 	}
 
 	mapEventNotificationToResourceModel(updated, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalEventNotificationJSON(updated))
-	}
+	populateEventNotificationConfig(updated, &data)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -170,4 +169,39 @@ func (r *EventNotificationResource) Delete(ctx context.Context, req resource.Del
 
 func (r *EventNotificationResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+func eventNotificationFromModel(data *EventNotificationResourceModel) (*client.EventNotification, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	var cfg map[string]interface{}
+
+	if err := json.Unmarshal([]byte(data.ConfigJSON.ValueString()), &cfg); err != nil {
+		diags.AddError("Invalid config_json", fmt.Sprintf("Failed to parse config_json: %v", err))
+		return nil, diags
+	}
+
+	notification := &client.EventNotification{
+		Title:  data.Title.ValueString(),
+		Config: cfg,
+	}
+	if !data.Description.IsNull() && !data.Description.IsUnknown() {
+		notification.Description = data.Description.ValueString()
+	}
+	return notification, diags
+}
+
+func populateEventNotificationConfig(notification *client.EventNotification, data *EventNotificationResourceModel) {
+	if !data.ConfigJSON.IsNull() && !data.ConfigJSON.IsUnknown() && data.ConfigJSON.ValueString() != "" {
+		return
+	}
+	if notification.Config == nil {
+		data.ConfigJSON = types.StringValue("{}")
+		return
+	}
+	b, err := json.Marshal(notification.Config)
+	if err != nil {
+		data.ConfigJSON = types.StringValue("{}")
+		return
+	}
+	data.ConfigJSON = types.StringValue(string(b))
 }

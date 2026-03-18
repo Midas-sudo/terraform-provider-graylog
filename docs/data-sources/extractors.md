@@ -34,8 +34,15 @@ data "graylog_extractors" "example" {
 
 Read-Only:
 
+- `condition_type` (String)
+- `condition_value` (String)
+- `converters_json` (String)
+- `cursor_strategy` (String)
+- `extractor_config_json` (String)
 - `extractor_type` (String)
 - `id` (String)
 - `input_id` (String)
-- `payload_json` (String)
+- `order` (Number)
+- `source_field` (String)
+- `target_field` (String)
 - `title` (String)

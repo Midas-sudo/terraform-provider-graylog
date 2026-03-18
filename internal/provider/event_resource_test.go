@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package provider
 
 import (
@@ -33,7 +36,7 @@ func TestAccEventNotificationResource(t *testing.T) {
 				ImportState:       true,
 				ImportStateVerify: true,
 				ImportStateVerifyIgnore: []string{
-					"payload_json",
+					"config_json",
 				},
 			},
 			{
@@ -68,9 +71,6 @@ func TestAccEventDefinitionResource(t *testing.T) {
 				ResourceName:      "graylog_event_definition.test",
 				ImportState:       true,
 				ImportStateVerify: true,
-				ImportStateVerifyIgnore: []string{
-					"payload_json",
-				},
 			},
 			{
 				Config: testAccEventDefinitionResourceConfig(updatedTitle, storageStreamID),
@@ -115,13 +115,11 @@ func TestAccEventDefinitionNotificationBindingResource(t *testing.T) {
 func testAccEventNotificationResourceConfig(title string) string {
 	return fmt.Sprintf(`
 resource "graylog_event_notification" "test" {
-  payload_json = jsonencode({
-    title       = %[1]q
-    description = "Terraform acceptance event notification"
-    config = {
-      type = "http-notification-v1"
-      url  = "https://example.org/terraform-event-notification"
-    }
+  title       = %[1]q
+  description = "Terraform acceptance event notification"
+  config_json = jsonencode({
+    type = "http-notification-v1"
+    url  = "https://example.org/terraform-event-notification"
   })
 }
 `, title)
@@ -130,30 +128,27 @@ resource "graylog_event_notification" "test" {
 func testAccEventDefinitionResourceConfig(title, storageStreamID string) string {
 	return fmt.Sprintf(`
 resource "graylog_event_definition" "test" {
-  payload_json = jsonencode({
-    title       = %[1]q
-    description = "Terraform acceptance event definition"
-    priority    = 1
-    alert       = false
-    config = {
-      type = "system-notifications-v1"
-    }
-    field_spec = {}
-    key_spec   = []
-    notification_settings = {
-      grace_period_ms = 0
-      backlog_size    = 0
-    }
-    notifications = []
-    storage = [
-      {
-        type    = "persist-to-streams-v1"
-        streams = [%[2]q]
-      }
-    ]
-    scheduler = null
-    state     = "ENABLED"
+  title       = %[1]q
+  description = "Terraform acceptance event definition"
+  priority    = 1
+  alert       = false
+  config_json = jsonencode({
+    type = "system-notifications-v1"
   })
+  field_spec_json = jsonencode({})
+  key_spec        = []
+  notification_settings_json = jsonencode({
+    grace_period_ms = 0
+    backlog_size    = 0
+  })
+  notifications_json = jsonencode([])
+  storage_json = jsonencode([
+    {
+      type    = "persist-to-streams-v1"
+      streams = [%[2]q]
+    }
+  ])
+  state = "ENABLED"
 }
 `, title, storageStreamID)
 }
@@ -166,52 +161,45 @@ func testAccEventBindingResourceConfig(suffix, storageStreamID string, includeSe
 	if includeSecond {
 		return fmt.Sprintf(`
 resource "graylog_event_notification" "one" {
-  payload_json = jsonencode({
-    title       = %[1]q
-    description = "Terraform acceptance event notification one"
-    config = {
-      type = "http-notification-v1"
-      url  = "https://example.org/terraform-event-binding-one"
-    }
+  title       = %[1]q
+  description = "Terraform acceptance event notification one"
+  config_json = jsonencode({
+    type = "http-notification-v1"
+    url  = "https://example.org/terraform-event-binding-one"
   })
 }
 
 resource "graylog_event_notification" "two" {
-  payload_json = jsonencode({
-    title       = %[2]q
-    description = "Terraform acceptance event notification two"
-    config = {
-      type = "http-notification-v1"
-      url  = "https://example.org/terraform-event-binding-two"
-    }
+  title       = %[2]q
+  description = "Terraform acceptance event notification two"
+  config_json = jsonencode({
+    type = "http-notification-v1"
+    url  = "https://example.org/terraform-event-binding-two"
   })
 }
 
 resource "graylog_event_definition" "test" {
-  payload_json = jsonencode({
-    title       = %[3]q
-    description = "Terraform acceptance event definition for binding"
-    priority    = 1
-    alert       = false
-    config = {
-      type = "system-notifications-v1"
-    }
-    field_spec = {}
-    key_spec   = []
-    notification_settings = {
-      grace_period_ms = 0
-      backlog_size    = 0
-    }
-    notifications = []
-    storage = [
-      {
-        type    = "persist-to-streams-v1"
-        streams = [%[4]q]
-      }
-    ]
-    scheduler = null
-    state     = "ENABLED"
+  title       = %[3]q
+  description = "Terraform acceptance event definition for binding"
+  priority    = 1
+  alert       = false
+  config_json = jsonencode({
+    type = "system-notifications-v1"
   })
+  field_spec_json = jsonencode({})
+  key_spec        = []
+  notification_settings_json = jsonencode({
+    grace_period_ms = 0
+    backlog_size    = 0
+  })
+  notifications_json = jsonencode([])
+  storage_json = jsonencode([
+    {
+      type    = "persist-to-streams-v1"
+      streams = [%[4]q]
+    }
+  ])
+  state = "ENABLED"
 }
 
 resource "graylog_event_definition_notification_binding" "test" {
@@ -226,41 +214,36 @@ resource "graylog_event_definition_notification_binding" "test" {
 
 	return fmt.Sprintf(`
 resource "graylog_event_notification" "one" {
-  payload_json = jsonencode({
-    title       = %[1]q
-    description = "Terraform acceptance event notification one"
-    config = {
-      type = "http-notification-v1"
-      url  = "https://example.org/terraform-event-binding-one"
-    }
+  title       = %[1]q
+  description = "Terraform acceptance event notification one"
+  config_json = jsonencode({
+    type = "http-notification-v1"
+    url  = "https://example.org/terraform-event-binding-one"
   })
 }
 
 resource "graylog_event_definition" "test" {
-  payload_json = jsonencode({
-    title       = %[2]q
-    description = "Terraform acceptance event definition for binding"
-    priority    = 1
-    alert       = false
-    config = {
-      type = "system-notifications-v1"
-    }
-    field_spec = {}
-    key_spec   = []
-    notification_settings = {
-      grace_period_ms = 0
-      backlog_size    = 0
-    }
-    notifications = []
-    storage = [
-      {
-        type    = "persist-to-streams-v1"
-        streams = [%[3]q]
-      }
-    ]
-    scheduler = null
-    state     = "ENABLED"
+  title       = %[2]q
+  description = "Terraform acceptance event definition for binding"
+  priority    = 1
+  alert       = false
+  config_json = jsonencode({
+    type = "system-notifications-v1"
   })
+  field_spec_json = jsonencode({})
+  key_spec        = []
+  notification_settings_json = jsonencode({
+    grace_period_ms = 0
+    backlog_size    = 0
+  })
+  notifications_json = jsonencode([])
+  storage_json = jsonencode([
+    {
+      type    = "persist-to-streams-v1"
+      streams = [%[3]q]
+    }
+  ])
+  state = "ENABLED"
 }
 
 resource "graylog_event_definition_notification_binding" "test" {

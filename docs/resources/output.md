@@ -14,12 +14,10 @@ Manages a Graylog output.
 
 ```terraform
 resource "graylog_output" "example" {
-  payload_json = jsonencode({
-    title = "Terraform Output"
-    type  = "org.graylog2.outputs.LoggingOutput"
-    configuration = {
-      prefix = "terraform-output:"
-    }
+  title = "Terraform Output"
+  type  = "org.graylog2.outputs.LoggingOutput"
+  configuration_json = jsonencode({
+    prefix = "terraform-output:"
   })
 }
 ```
@@ -29,10 +27,10 @@ resource "graylog_output" "example" {
 
 ### Required
 
-- `payload_json` (String) Raw JSON payload for the output object.
+- `configuration_json` (String) JSON object with plugin-specific output configuration.
+- `title` (String)
+- `type` (String)
 
 ### Read-Only
 
 - `id` (String) The ID of this resource.
-- `title` (String)
-- `type` (String)

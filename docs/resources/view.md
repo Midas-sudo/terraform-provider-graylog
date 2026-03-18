@@ -14,16 +14,14 @@ Manages a Graylog view object.
 
 ```terraform
 resource "graylog_view" "example" {
-  payload_json = jsonencode({
-    type        = "SEARCH"
-    title       = "Terraform View"
-    summary     = "Search view managed by Terraform"
-    description = "A minimal Graylog view payload"
-    search_id   = "existing-search-id"
-    properties  = []
-    requires    = {}
-    state       = {}
-  })
+  title       = "Terraform View"
+  summary     = "Search view managed by Terraform"
+  description = "A minimal Graylog view payload"
+  search_id   = "existing-search-id"
+
+  properties_json = jsonencode([])
+  requires_json   = jsonencode({})
+  state_json      = jsonencode({})
 }
 ```
 
@@ -32,13 +30,18 @@ resource "graylog_view" "example" {
 
 ### Required
 
-- `payload_json` (String) Raw JSON payload for the view entity (without wrapper).
+- `search_id` (String) Associated search ID.
+- `title` (String) View title.
+
+### Optional
+
+- `description` (String) View description.
+- `properties_json` (String)
+- `requires_json` (String)
+- `state_json` (String) JSON object describing the view state.
+- `summary` (String) View summary.
 
 ### Read-Only
 
-- `description` (String) View description.
 - `id` (String) The ID of this resource.
-- `search_id` (String) Associated search ID.
-- `summary` (String) View summary.
-- `title` (String) View title.
 - `type` (String) View type reported by Graylog (e.g. `SEARCH`).

@@ -1,9 +1,14 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -28,11 +33,17 @@ type ContentPackResource struct {
 }
 
 type ContentPackResourceModel struct {
-	ID            types.String `tfsdk:"id"`
-	ContentPackID types.String `tfsdk:"content_pack_id"`
-	Revision      types.Int64  `tfsdk:"revision"`
-	Name          types.String `tfsdk:"name"`
-	PayloadJSON   types.String `tfsdk:"payload_json"`
+	ID             types.String `tfsdk:"id"`
+	ContentPackID  types.String `tfsdk:"content_pack_id"`
+	Revision       types.Int64  `tfsdk:"revision"`
+	V              types.String `tfsdk:"v"`
+	Name           types.String `tfsdk:"name"`
+	Summary        types.String `tfsdk:"summary"`
+	Description    types.String `tfsdk:"description"`
+	Vendor         types.String `tfsdk:"vendor"`
+	URL            types.String `tfsdk:"url"`
+	ParametersJSON types.String `tfsdk:"parameters_json"`
+	EntitiesJSON   types.String `tfsdk:"entities_json"`
 }
 
 func (r *ContentPackResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -51,17 +62,34 @@ func (r *ContentPackResource) Schema(_ context.Context, _ resource.SchemaRequest
 				MarkdownDescription: "Composite ID formatted as `content_pack_id/revision`.",
 			},
 			"content_pack_id": schema.StringAttribute{
-				Computed: true,
+				Required: true,
 			},
 			"revision": schema.Int64Attribute{
-				Computed: true,
+				Required: true,
+			},
+			"v": schema.StringAttribute{
+				Required: true,
 			},
 			"name": schema.StringAttribute{
-				Computed: true,
+				Required: true,
 			},
-			"payload_json": schema.StringAttribute{
-				Required:            true,
-				MarkdownDescription: "Raw JSON payload for content pack creation.",
+			"summary": schema.StringAttribute{
+				Optional: true,
+			},
+			"description": schema.StringAttribute{
+				Optional: true,
+			},
+			"vendor": schema.StringAttribute{
+				Optional: true,
+			},
+			"url": schema.StringAttribute{
+				Optional: true,
+			},
+			"parameters_json": schema.StringAttribute{
+				Optional: true,
+			},
+			"entities_json": schema.StringAttribute{
+				Optional: true,
 			},
 		},
 	}
@@ -86,7 +114,7 @@ func (r *ContentPackResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	contentPackReq, diags := contentPackFromPayload(data.PayloadJSON.ValueString())
+	contentPackReq, diags := contentPackFromModel(&data)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -104,9 +132,7 @@ func (r *ContentPackResource) Create(ctx context.Context, req resource.CreateReq
 	}
 
 	mapContentPackToResourceModel(created, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalContentPackJSON(created))
-	}
+	populateContentPackJSONFields(created, &data)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -128,9 +154,7 @@ func (r *ContentPackResource) Read(ctx context.Context, req resource.ReadRequest
 	}
 
 	mapContentPackToResourceModel(contentPack, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalContentPackJSON(contentPack))
-	}
+	populateContentPackJSONFields(contentPack, &data)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -143,7 +167,7 @@ func (r *ContentPackResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	contentPackReq, diags := contentPackFromPayload(data.PayloadJSON.ValueString())
+	contentPackReq, diags := contentPackFromModel(&data)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -165,9 +189,7 @@ func (r *ContentPackResource) Update(ctx context.Context, req resource.UpdateReq
 	}
 
 	mapContentPackToResourceModel(updated, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalContentPackJSON(updated))
-	}
+	populateContentPackJSONFields(updated, &data)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -192,4 +214,56 @@ func (r *ContentPackResource) ImportState(ctx context.Context, req resource.Impo
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), req.ID)...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("content_pack_id"), contentPackID)...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("revision"), rev)...)
+}
+
+func contentPackFromModel(data *ContentPackResourceModel) (*client.ContentPack, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	contentPack := &client.ContentPack{
+		ID:   data.ContentPackID.ValueString(),
+		Rev:  data.Revision.ValueInt64(),
+		V:    data.V.ValueString(),
+		Name: data.Name.ValueString(),
+	}
+	if !data.Summary.IsNull() && !data.Summary.IsUnknown() {
+		contentPack.Summary = data.Summary.ValueString()
+	}
+	if !data.Description.IsNull() && !data.Description.IsUnknown() {
+		contentPack.Description = data.Description.ValueString()
+	}
+	if !data.Vendor.IsNull() && !data.Vendor.IsUnknown() {
+		contentPack.Vendor = data.Vendor.ValueString()
+	}
+	if !data.URL.IsNull() && !data.URL.IsUnknown() {
+		contentPack.URL = data.URL.ValueString()
+	}
+	if !data.ParametersJSON.IsNull() && !data.ParametersJSON.IsUnknown() && data.ParametersJSON.ValueString() != "" {
+		if err := json.Unmarshal([]byte(data.ParametersJSON.ValueString()), &contentPack.Parameters); err != nil {
+			diags.AddError("Invalid parameters_json", fmt.Sprintf("Failed to parse parameters_json: %v", err))
+			return nil, diags
+		}
+	}
+	if !data.EntitiesJSON.IsNull() && !data.EntitiesJSON.IsUnknown() && data.EntitiesJSON.ValueString() != "" {
+		if err := json.Unmarshal([]byte(data.EntitiesJSON.ValueString()), &contentPack.Entities); err != nil {
+			diags.AddError("Invalid entities_json", fmt.Sprintf("Failed to parse entities_json: %v", err))
+			return nil, diags
+		}
+	}
+	return contentPack, diags
+}
+
+func populateContentPackJSONFields(contentPack *client.ContentPack, data *ContentPackResourceModel) {
+	if contentPack.Parameters != nil {
+		if b, err := json.Marshal(contentPack.Parameters); err == nil {
+			data.ParametersJSON = types.StringValue(string(b))
+		}
+	} else {
+		data.ParametersJSON = types.StringNull()
+	}
+	if contentPack.Entities != nil {
+		if b, err := json.Marshal(contentPack.Entities); err == nil {
+			data.EntitiesJSON = types.StringValue(string(b))
+		}
+	} else {
+		data.EntitiesJSON = types.StringNull()
+	}
 }

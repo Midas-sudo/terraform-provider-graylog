@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package provider
 
 import (
@@ -22,10 +25,10 @@ type OutputDataSource struct {
 }
 
 type OutputDataSourceModel struct {
-	ID          types.String `tfsdk:"id"`
-	Title       types.String `tfsdk:"title"`
-	Type        types.String `tfsdk:"type"`
-	PayloadJSON types.String `tfsdk:"payload_json"`
+	ID                types.String `tfsdk:"id"`
+	Title             types.String `tfsdk:"title"`
+	Type              types.String `tfsdk:"type"`
+	ConfigurationJSON types.String `tfsdk:"configuration_json"`
 }
 
 func (d *OutputDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -36,10 +39,10 @@ func (d *OutputDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Retrieves a Graylog output by ID.",
 		Attributes: map[string]schema.Attribute{
-			"id":           schema.StringAttribute{Required: true},
-			"title":        schema.StringAttribute{Computed: true},
-			"type":         schema.StringAttribute{Computed: true},
-			"payload_json": schema.StringAttribute{Computed: true},
+			"id":                 schema.StringAttribute{Required: true},
+			"title":              schema.StringAttribute{Computed: true},
+			"type":               schema.StringAttribute{Computed: true},
+			"configuration_json": schema.StringAttribute{Computed: true},
 		},
 	}
 }
@@ -99,10 +102,10 @@ func (d *OutputsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						"id":           schema.StringAttribute{Computed: true},
-						"title":        schema.StringAttribute{Computed: true},
-						"type":         schema.StringAttribute{Computed: true},
-						"payload_json": schema.StringAttribute{Computed: true},
+						"id":                 schema.StringAttribute{Computed: true},
+						"title":              schema.StringAttribute{Computed: true},
+						"type":               schema.StringAttribute{Computed: true},
+						"configuration_json": schema.StringAttribute{Computed: true},
 					},
 				},
 			},
@@ -150,11 +153,18 @@ type ExtractorDataSource struct {
 }
 
 type ExtractorDataSourceModel struct {
-	ID            types.String `tfsdk:"id"`
-	InputID       types.String `tfsdk:"input_id"`
-	Title         types.String `tfsdk:"title"`
-	ExtractorType types.String `tfsdk:"extractor_type"`
-	PayloadJSON   types.String `tfsdk:"payload_json"`
+	ID                  types.String `tfsdk:"id"`
+	InputID             types.String `tfsdk:"input_id"`
+	Title               types.String `tfsdk:"title"`
+	ExtractorType       types.String `tfsdk:"extractor_type"`
+	CursorStrategy      types.String `tfsdk:"cursor_strategy"`
+	SourceField         types.String `tfsdk:"source_field"`
+	TargetField         types.String `tfsdk:"target_field"`
+	ConditionType       types.String `tfsdk:"condition_type"`
+	ConditionValue      types.String `tfsdk:"condition_value"`
+	Order               types.Int64  `tfsdk:"order"`
+	ExtractorConfigJSON types.String `tfsdk:"extractor_config_json"`
+	ConvertersJSON      types.String `tfsdk:"converters_json"`
 }
 
 func (d *ExtractorDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -165,11 +175,18 @@ func (d *ExtractorDataSource) Schema(_ context.Context, _ datasource.SchemaReque
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Retrieves an extractor by input and extractor IDs.",
 		Attributes: map[string]schema.Attribute{
-			"id":             schema.StringAttribute{Required: true},
-			"input_id":       schema.StringAttribute{Required: true},
-			"title":          schema.StringAttribute{Computed: true},
-			"extractor_type": schema.StringAttribute{Computed: true},
-			"payload_json":   schema.StringAttribute{Computed: true},
+			"id":                    schema.StringAttribute{Required: true},
+			"input_id":              schema.StringAttribute{Required: true},
+			"title":                 schema.StringAttribute{Computed: true},
+			"extractor_type":        schema.StringAttribute{Computed: true},
+			"cursor_strategy":       schema.StringAttribute{Computed: true},
+			"source_field":          schema.StringAttribute{Computed: true},
+			"target_field":          schema.StringAttribute{Computed: true},
+			"condition_type":        schema.StringAttribute{Computed: true},
+			"condition_value":       schema.StringAttribute{Computed: true},
+			"order":                 schema.Int64Attribute{Computed: true},
+			"extractor_config_json": schema.StringAttribute{Computed: true},
+			"converters_json":       schema.StringAttribute{Computed: true},
 		},
 	}
 }
@@ -232,11 +249,18 @@ func (d *ExtractorsDataSource) Schema(_ context.Context, _ datasource.SchemaRequ
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						"id":             schema.StringAttribute{Computed: true},
-						"input_id":       schema.StringAttribute{Computed: true},
-						"title":          schema.StringAttribute{Computed: true},
-						"extractor_type": schema.StringAttribute{Computed: true},
-						"payload_json":   schema.StringAttribute{Computed: true},
+						"id":                    schema.StringAttribute{Computed: true},
+						"input_id":              schema.StringAttribute{Computed: true},
+						"title":                 schema.StringAttribute{Computed: true},
+						"extractor_type":        schema.StringAttribute{Computed: true},
+						"cursor_strategy":       schema.StringAttribute{Computed: true},
+						"source_field":          schema.StringAttribute{Computed: true},
+						"target_field":          schema.StringAttribute{Computed: true},
+						"condition_type":        schema.StringAttribute{Computed: true},
+						"condition_value":       schema.StringAttribute{Computed: true},
+						"order":                 schema.Int64Attribute{Computed: true},
+						"extractor_config_json": schema.StringAttribute{Computed: true},
+						"converters_json":       schema.StringAttribute{Computed: true},
 					},
 				},
 			},

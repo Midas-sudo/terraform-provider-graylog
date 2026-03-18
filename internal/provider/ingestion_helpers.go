@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package provider
 
 import (
@@ -81,7 +84,17 @@ func mapOutputToResourceModel(output *client.Output, data *OutputResourceModel) 
 func mapExtractorToResourceModel(extractor *client.Extractor, data *ExtractorResourceModel) {
 	data.ID = types.StringValue(extractor.ID)
 	data.Title = types.StringValue(extractor.Title)
-	data.ExtractorType = types.StringValue(extractor.Type)
+	if extractor.ExtractorType != "" {
+		data.ExtractorType = types.StringValue(extractor.ExtractorType)
+	} else {
+		data.ExtractorType = types.StringValue(extractor.Type)
+	}
+	data.CursorStrategy = types.StringValue(extractor.CursorStrategy)
+	data.SourceField = types.StringValue(extractor.SourceField)
+	data.TargetField = types.StringValue(extractor.TargetField)
+	data.ConditionType = types.StringValue(extractor.ConditionType)
+	data.ConditionValue = types.StringValue(extractor.ConditionValue)
+	data.Order = types.Int64Value(extractor.Order)
 }
 
 func mapGrokPatternToResourceModel(pattern *client.GrokPattern, data *GrokPatternResourceModel) {
@@ -94,14 +107,49 @@ func mapOutputToDataSourceModel(output *client.Output, data *OutputDataSourceMod
 	data.ID = types.StringValue(output.ID)
 	data.Title = types.StringValue(output.Title)
 	data.Type = types.StringValue(output.Type)
-	data.PayloadJSON = types.StringValue(marshalOutputJSON(output))
+	if output.Configuration == nil {
+		data.ConfigurationJSON = types.StringValue("{}")
+		return
+	}
+	b, err := json.Marshal(output.Configuration)
+	if err != nil {
+		data.ConfigurationJSON = types.StringValue("{}")
+		return
+	}
+	data.ConfigurationJSON = types.StringValue(string(b))
 }
 
 func mapExtractorToDataSourceModel(extractor *client.Extractor, data *ExtractorDataSourceModel) {
 	data.ID = types.StringValue(extractor.ID)
 	data.Title = types.StringValue(extractor.Title)
-	data.ExtractorType = types.StringValue(extractor.Type)
-	data.PayloadJSON = types.StringValue(marshalExtractorJSON(extractor))
+	if extractor.ExtractorType != "" {
+		data.ExtractorType = types.StringValue(extractor.ExtractorType)
+	} else {
+		data.ExtractorType = types.StringValue(extractor.Type)
+	}
+	data.CursorStrategy = types.StringValue(extractor.CursorStrategy)
+	data.SourceField = types.StringValue(extractor.SourceField)
+	data.TargetField = types.StringValue(extractor.TargetField)
+	data.ConditionType = types.StringValue(extractor.ConditionType)
+	data.ConditionValue = types.StringValue(extractor.ConditionValue)
+	data.Order = types.Int64Value(extractor.Order)
+
+	cfg := extractor.ExtractorConfig
+	if cfg == nil {
+		data.ExtractorConfigJSON = types.StringValue("{}")
+	} else if b, err := json.Marshal(cfg); err == nil {
+		data.ExtractorConfigJSON = types.StringValue(string(b))
+	} else {
+		data.ExtractorConfigJSON = types.StringValue("{}")
+	}
+	converters := extractor.Converters
+	if converters == nil {
+		data.ConvertersJSON = types.StringValue("[]")
+	} else if b, err := json.Marshal(converters); err == nil {
+		data.ConvertersJSON = types.StringValue(string(b))
+	} else {
+		data.ConvertersJSON = types.StringValue("[]")
+	}
 }
 
 func mapGrokPatternToDataSourceModel(pattern *client.GrokPattern, data *GrokPatternDataSourceModel) {

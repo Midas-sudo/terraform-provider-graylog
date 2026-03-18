@@ -23,8 +23,11 @@ data "graylog_lookup_data_adapter" "example" {
 
 ### Read-Only
 
+- `config_json` (String)
+- `custom_error_ttl` (Number)
+- `custom_error_ttl_enabled` (Boolean)
+- `custom_error_ttl_unit` (String)
 - `description` (String)
 - `id` (String) The ID of this resource.
 - `name` (String)
-- `payload_json` (String)
 - `title` (String)

@@ -28,7 +28,7 @@ data "graylog_event_notifications" "example" {}
 
 Read-Only:
 
+- `config_json` (String)
 - `description` (String)
 - `id` (String)
-- `payload_json` (String)
 - `title` (String)

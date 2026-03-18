@@ -25,8 +25,11 @@ data "graylog_lookup_table" "example" {
 
 - `cache_id` (String)
 - `data_adapter_id` (String)
+- `default_multi_value` (String)
+- `default_multi_value_type` (String)
+- `default_single_value` (String)
+- `default_single_value_type` (String)
 - `description` (String)
 - `id` (String) The ID of this resource.
 - `name` (String)
-- `payload_json` (String)
 - `title` (String)

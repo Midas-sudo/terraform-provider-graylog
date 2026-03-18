@@ -28,8 +28,15 @@ data "graylog_event_definitions" "example" {}
 
 Read-Only:
 
+- `alert` (Boolean)
+- `config_json` (String)
 - `description` (String)
+- `field_spec_json` (String)
 - `id` (String)
-- `payload_json` (String)
+- `key_spec` (List of String)
+- `notification_settings_json` (String)
+- `notifications_json` (String)
+- `priority` (Number)
 - `state` (String)
+- `storage_json` (String)
 - `title` (String)

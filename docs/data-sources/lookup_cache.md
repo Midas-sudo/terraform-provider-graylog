@@ -23,8 +23,8 @@ data "graylog_lookup_cache" "example" {
 
 ### Read-Only
 
+- `config_json` (String)
 - `description` (String)
 - `id` (String) The ID of this resource.
 - `name` (String)
-- `payload_json` (String)
 - `title` (String)

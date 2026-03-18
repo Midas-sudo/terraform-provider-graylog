@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package provider
 
 import (
@@ -49,7 +52,12 @@ func marshalContentPackInstallationJSON(req *client.ContentPackInstallationReque
 func mapContentPackToResourceModel(contentPack *client.ContentPack, data *ContentPackResourceModel) {
 	data.ContentPackID = types.StringValue(contentPack.ID)
 	data.Revision = types.Int64Value(contentPack.Rev)
+	data.V = types.StringValue(contentPack.V)
 	data.Name = types.StringValue(contentPack.Name)
+	data.Summary = types.StringValue(contentPack.Summary)
+	data.Description = types.StringValue(contentPack.Description)
+	data.Vendor = types.StringValue(contentPack.Vendor)
+	data.URL = types.StringValue(contentPack.URL)
 	data.ID = types.StringValue(fmt.Sprintf("%s/%d", contentPack.ID, contentPack.Rev))
 }
 
@@ -57,6 +65,21 @@ func mapContentPackInstallationToResourceModel(inst *client.ContentPackInstallat
 	data.ID = types.StringValue(inst.ID)
 	data.ContentPackID = types.StringValue(inst.ContentPackID)
 	data.Revision = types.Int64Value(inst.ContentPackRevision)
+	if inst.Comment != "" {
+		data.Comment = types.StringValue(inst.Comment)
+	} else {
+		data.Comment = types.StringNull()
+	}
+	if inst.Parameters != nil {
+		b, err := json.Marshal(inst.Parameters)
+		if err == nil {
+			data.ParametersJSON = types.StringValue(string(b))
+		} else {
+			data.ParametersJSON = types.StringValue("{}")
+		}
+	} else {
+		data.ParametersJSON = types.StringNull()
+	}
 }
 
 func parseContentPackImportID(importID string) (string, int64, error) {

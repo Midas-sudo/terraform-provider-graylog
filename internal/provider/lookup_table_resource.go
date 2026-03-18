@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package provider
 
 import (
@@ -28,13 +31,16 @@ type LookupTableResource struct {
 }
 
 type LookupTableResourceModel struct {
-	ID            types.String `tfsdk:"id"`
-	Title         types.String `tfsdk:"title"`
-	Name          types.String `tfsdk:"name"`
-	Description   types.String `tfsdk:"description"`
-	CacheID       types.String `tfsdk:"cache_id"`
-	DataAdapterID types.String `tfsdk:"data_adapter_id"`
-	PayloadJSON   types.String `tfsdk:"payload_json"`
+	ID                     types.String `tfsdk:"id"`
+	Title                  types.String `tfsdk:"title"`
+	Name                   types.String `tfsdk:"name"`
+	Description            types.String `tfsdk:"description"`
+	CacheID                types.String `tfsdk:"cache_id"`
+	DataAdapterID          types.String `tfsdk:"data_adapter_id"`
+	DefaultSingleValue     types.String `tfsdk:"default_single_value"`
+	DefaultSingleValueType types.String `tfsdk:"default_single_value_type"`
+	DefaultMultiValue      types.String `tfsdk:"default_multi_value"`
+	DefaultMultiValueType  types.String `tfsdk:"default_multi_value_type"`
 }
 
 func (r *LookupTableResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -51,14 +57,24 @@ func (r *LookupTableResource) Schema(_ context.Context, _ resource.SchemaRequest
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"title":           schema.StringAttribute{Computed: true},
-			"name":            schema.StringAttribute{Computed: true},
-			"description":     schema.StringAttribute{Computed: true},
-			"cache_id":        schema.StringAttribute{Computed: true},
-			"data_adapter_id": schema.StringAttribute{Computed: true},
-			"payload_json": schema.StringAttribute{
-				Required:            true,
-				MarkdownDescription: "Raw JSON payload for the lookup table.",
+			"title":       schema.StringAttribute{Required: true},
+			"name":        schema.StringAttribute{Required: true},
+			"description": schema.StringAttribute{Optional: true},
+			"cache_id":    schema.StringAttribute{Required: true},
+			"data_adapter_id": schema.StringAttribute{
+				Required: true,
+			},
+			"default_single_value": schema.StringAttribute{
+				Optional: true,
+			},
+			"default_single_value_type": schema.StringAttribute{
+				Optional: true,
+			},
+			"default_multi_value": schema.StringAttribute{
+				Optional: true,
+			},
+			"default_multi_value_type": schema.StringAttribute{
+				Optional: true,
 			},
 		},
 	}
@@ -83,11 +99,7 @@ func (r *LookupTableResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	tableReq, diags := lookupTableFromPayload(data.PayloadJSON.ValueString())
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
+	tableReq := lookupTableFromModel(&data)
 
 	created, err := r.client.CreateLookupTable(ctx, tableReq)
 	if err != nil {
@@ -96,9 +108,6 @@ func (r *LookupTableResource) Create(ctx context.Context, req resource.CreateReq
 	}
 
 	mapLookupTableToResourceModel(created, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalLookupTableJSON(created))
-	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -120,9 +129,6 @@ func (r *LookupTableResource) Read(ctx context.Context, req resource.ReadRequest
 	}
 
 	mapLookupTableToResourceModel(current, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalLookupTableJSON(current))
-	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -135,11 +141,7 @@ func (r *LookupTableResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	tableReq, diags := lookupTableFromPayload(data.PayloadJSON.ValueString())
-	resp.Diagnostics.Append(diags...)
-	if resp.Diagnostics.HasError() {
-		return
-	}
+	tableReq := lookupTableFromModel(&data)
 
 	updated, err := r.client.UpdateLookupTable(ctx, state.ID.ValueString(), tableReq)
 	if err != nil {
@@ -148,9 +150,6 @@ func (r *LookupTableResource) Update(ctx context.Context, req resource.UpdateReq
 	}
 
 	mapLookupTableToResourceModel(updated, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalLookupTableJSON(updated))
-	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -168,4 +167,29 @@ func (r *LookupTableResource) Delete(ctx context.Context, req resource.DeleteReq
 
 func (r *LookupTableResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+func lookupTableFromModel(data *LookupTableResourceModel) *client.LookupTable {
+	table := &client.LookupTable{
+		Title:         data.Title.ValueString(),
+		Name:          data.Name.ValueString(),
+		CacheID:       data.CacheID.ValueString(),
+		DataAdapterID: data.DataAdapterID.ValueString(),
+	}
+	if !data.Description.IsNull() && !data.Description.IsUnknown() {
+		table.Description = data.Description.ValueString()
+	}
+	if !data.DefaultSingleValue.IsNull() && !data.DefaultSingleValue.IsUnknown() {
+		table.DefaultSingleValue = data.DefaultSingleValue.ValueString()
+	}
+	if !data.DefaultSingleValueType.IsNull() && !data.DefaultSingleValueType.IsUnknown() {
+		table.DefaultSingleType = data.DefaultSingleValueType.ValueString()
+	}
+	if !data.DefaultMultiValue.IsNull() && !data.DefaultMultiValue.IsUnknown() {
+		table.DefaultMultiValue = data.DefaultMultiValue.ValueString()
+	}
+	if !data.DefaultMultiValueType.IsNull() && !data.DefaultMultiValueType.IsUnknown() {
+		table.DefaultMultiType = data.DefaultMultiValueType.ValueString()
+	}
+	return table
 }

@@ -16,19 +16,17 @@ Manages a Graylog extractor for a specific input.
 data "graylog_inputs" "all" {}
 
 resource "graylog_extractor" "example" {
-  input_id = data.graylog_inputs.all.inputs[0].id
-  payload_json = jsonencode({
-    title           = "Terraform Extractor"
-    source_field    = "message"
-    target_field    = "message_copy"
-    extractor_type  = "copy_input"
-    cursor_strategy = "copy"
-    condition_type  = "none"
-    condition_value = ""
-    extractor_config = {}
-    converters       = []
-    order            = 0
-  })
+  input_id              = data.graylog_inputs.all.inputs[0].id
+  title                 = "Terraform Extractor"
+  source_field          = "message"
+  target_field          = "message_copy"
+  extractor_type        = "copy_input"
+  cursor_strategy       = "copy"
+  condition_type        = "none"
+  condition_value       = ""
+  extractor_config_json = jsonencode({})
+  converters_json       = jsonencode([])
+  order                 = 0
 }
 ```
 
@@ -37,11 +35,21 @@ resource "graylog_extractor" "example" {
 
 ### Required
 
+- `condition_type` (String)
+- `cursor_strategy` (String)
+- `extractor_type` (String)
 - `input_id` (String) Graylog input ID that owns this extractor.
-- `payload_json` (String) Raw JSON payload for the extractor request body.
+- `source_field` (String)
+- `target_field` (String)
+- `title` (String)
+
+### Optional
+
+- `condition_value` (String)
+- `converters_json` (String) JSON array with converter configurations.
+- `extractor_config_json` (String) JSON object with extractor-specific configuration.
+- `order` (Number)
 
 ### Read-Only
 
-- `extractor_type` (String)
 - `id` (String) The ID of this resource.
-- `title` (String)

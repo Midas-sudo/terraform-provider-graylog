@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package provider
 
 import (
@@ -22,11 +25,14 @@ type LookupDataAdapterDataSource struct {
 }
 
 type LookupDataAdapterDataSourceModel struct {
-	ID          types.String `tfsdk:"id"`
-	Title       types.String `tfsdk:"title"`
-	Name        types.String `tfsdk:"name"`
-	Description types.String `tfsdk:"description"`
-	PayloadJSON types.String `tfsdk:"payload_json"`
+	ID                    types.String `tfsdk:"id"`
+	Title                 types.String `tfsdk:"title"`
+	Name                  types.String `tfsdk:"name"`
+	Description           types.String `tfsdk:"description"`
+	ConfigJSON            types.String `tfsdk:"config_json"`
+	CustomErrorTTLEnabled types.Bool   `tfsdk:"custom_error_ttl_enabled"`
+	CustomErrorTTL        types.Int64  `tfsdk:"custom_error_ttl"`
+	CustomErrorTTLUnit    types.String `tfsdk:"custom_error_ttl_unit"`
 }
 
 func (d *LookupDataAdapterDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -37,13 +43,14 @@ func (d *LookupDataAdapterDataSource) Schema(_ context.Context, _ datasource.Sch
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Retrieves a Graylog lookup data adapter by ID.",
 		Attributes: map[string]schema.Attribute{
-			"id":          schema.StringAttribute{Required: true},
-			"title":       schema.StringAttribute{Computed: true},
-			"name":        schema.StringAttribute{Computed: true},
-			"description": schema.StringAttribute{Computed: true},
-			"payload_json": schema.StringAttribute{
-				Computed: true,
-			},
+			"id":                       schema.StringAttribute{Required: true},
+			"title":                    schema.StringAttribute{Computed: true},
+			"name":                     schema.StringAttribute{Computed: true},
+			"description":              schema.StringAttribute{Computed: true},
+			"config_json":              schema.StringAttribute{Computed: true},
+			"custom_error_ttl_enabled": schema.BoolAttribute{Computed: true},
+			"custom_error_ttl":         schema.Int64Attribute{Computed: true},
+			"custom_error_ttl_unit":    schema.StringAttribute{Computed: true},
 		},
 	}
 }
@@ -103,11 +110,14 @@ func (d *LookupDataAdaptersDataSource) Schema(_ context.Context, _ datasource.Sc
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						"id":           schema.StringAttribute{Computed: true},
-						"title":        schema.StringAttribute{Computed: true},
-						"name":         schema.StringAttribute{Computed: true},
-						"description":  schema.StringAttribute{Computed: true},
-						"payload_json": schema.StringAttribute{Computed: true},
+						"id":                       schema.StringAttribute{Computed: true},
+						"title":                    schema.StringAttribute{Computed: true},
+						"name":                     schema.StringAttribute{Computed: true},
+						"description":              schema.StringAttribute{Computed: true},
+						"config_json":              schema.StringAttribute{Computed: true},
+						"custom_error_ttl_enabled": schema.BoolAttribute{Computed: true},
+						"custom_error_ttl":         schema.Int64Attribute{Computed: true},
+						"custom_error_ttl_unit":    schema.StringAttribute{Computed: true},
 					},
 				},
 			},
@@ -159,7 +169,7 @@ type LookupCacheDataSourceModel struct {
 	Title       types.String `tfsdk:"title"`
 	Name        types.String `tfsdk:"name"`
 	Description types.String `tfsdk:"description"`
-	PayloadJSON types.String `tfsdk:"payload_json"`
+	ConfigJSON  types.String `tfsdk:"config_json"`
 }
 
 func (d *LookupCacheDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -174,9 +184,7 @@ func (d *LookupCacheDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 			"title":       schema.StringAttribute{Computed: true},
 			"name":        schema.StringAttribute{Computed: true},
 			"description": schema.StringAttribute{Computed: true},
-			"payload_json": schema.StringAttribute{
-				Computed: true,
-			},
+			"config_json": schema.StringAttribute{Computed: true},
 		},
 	}
 }
@@ -236,11 +244,11 @@ func (d *LookupCachesDataSource) Schema(_ context.Context, _ datasource.SchemaRe
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						"id":           schema.StringAttribute{Computed: true},
-						"title":        schema.StringAttribute{Computed: true},
-						"name":         schema.StringAttribute{Computed: true},
-						"description":  schema.StringAttribute{Computed: true},
-						"payload_json": schema.StringAttribute{Computed: true},
+						"id":          schema.StringAttribute{Computed: true},
+						"title":       schema.StringAttribute{Computed: true},
+						"name":        schema.StringAttribute{Computed: true},
+						"description": schema.StringAttribute{Computed: true},
+						"config_json": schema.StringAttribute{Computed: true},
 					},
 				},
 			},
@@ -288,13 +296,16 @@ type LookupTableDataSource struct {
 }
 
 type LookupTableDataSourceModel struct {
-	ID            types.String `tfsdk:"id"`
-	Title         types.String `tfsdk:"title"`
-	Name          types.String `tfsdk:"name"`
-	Description   types.String `tfsdk:"description"`
-	CacheID       types.String `tfsdk:"cache_id"`
-	DataAdapterID types.String `tfsdk:"data_adapter_id"`
-	PayloadJSON   types.String `tfsdk:"payload_json"`
+	ID                     types.String `tfsdk:"id"`
+	Title                  types.String `tfsdk:"title"`
+	Name                   types.String `tfsdk:"name"`
+	Description            types.String `tfsdk:"description"`
+	CacheID                types.String `tfsdk:"cache_id"`
+	DataAdapterID          types.String `tfsdk:"data_adapter_id"`
+	DefaultSingleValue     types.String `tfsdk:"default_single_value"`
+	DefaultSingleValueType types.String `tfsdk:"default_single_value_type"`
+	DefaultMultiValue      types.String `tfsdk:"default_multi_value"`
+	DefaultMultiValueType  types.String `tfsdk:"default_multi_value_type"`
 }
 
 func (d *LookupTableDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -305,13 +316,16 @@ func (d *LookupTableDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Retrieves a Graylog lookup table by ID.",
 		Attributes: map[string]schema.Attribute{
-			"id":              schema.StringAttribute{Required: true},
-			"title":           schema.StringAttribute{Computed: true},
-			"name":            schema.StringAttribute{Computed: true},
-			"description":     schema.StringAttribute{Computed: true},
-			"cache_id":        schema.StringAttribute{Computed: true},
-			"data_adapter_id": schema.StringAttribute{Computed: true},
-			"payload_json":    schema.StringAttribute{Computed: true},
+			"id":                        schema.StringAttribute{Required: true},
+			"title":                     schema.StringAttribute{Computed: true},
+			"name":                      schema.StringAttribute{Computed: true},
+			"description":               schema.StringAttribute{Computed: true},
+			"cache_id":                  schema.StringAttribute{Computed: true},
+			"data_adapter_id":           schema.StringAttribute{Computed: true},
+			"default_single_value":      schema.StringAttribute{Computed: true},
+			"default_single_value_type": schema.StringAttribute{Computed: true},
+			"default_multi_value":       schema.StringAttribute{Computed: true},
+			"default_multi_value_type":  schema.StringAttribute{Computed: true},
 		},
 	}
 }
@@ -371,13 +385,16 @@ func (d *LookupTablesDataSource) Schema(_ context.Context, _ datasource.SchemaRe
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						"id":              schema.StringAttribute{Computed: true},
-						"title":           schema.StringAttribute{Computed: true},
-						"name":            schema.StringAttribute{Computed: true},
-						"description":     schema.StringAttribute{Computed: true},
-						"cache_id":        schema.StringAttribute{Computed: true},
-						"data_adapter_id": schema.StringAttribute{Computed: true},
-						"payload_json":    schema.StringAttribute{Computed: true},
+						"id":                        schema.StringAttribute{Computed: true},
+						"title":                     schema.StringAttribute{Computed: true},
+						"name":                      schema.StringAttribute{Computed: true},
+						"description":               schema.StringAttribute{Computed: true},
+						"cache_id":                  schema.StringAttribute{Computed: true},
+						"data_adapter_id":           schema.StringAttribute{Computed: true},
+						"default_single_value":      schema.StringAttribute{Computed: true},
+						"default_single_value_type": schema.StringAttribute{Computed: true},
+						"default_multi_value":       schema.StringAttribute{Computed: true},
+						"default_multi_value_type":  schema.StringAttribute{Computed: true},
 					},
 				},
 			},

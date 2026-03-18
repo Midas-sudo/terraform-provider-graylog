@@ -23,7 +23,7 @@ data "graylog_event_notification" "example" {
 
 ### Read-Only
 
+- `config_json` (String) JSON object with event notification configuration.
 - `description` (String)
 - `id` (String) The ID of this resource.
-- `payload_json` (String) Raw JSON payload for the event notification.
 - `title` (String)

@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package provider
 
 import (
@@ -29,9 +32,6 @@ func TestAccLookupDataAdapterResource(t *testing.T) {
 				ResourceName:      "graylog_lookup_data_adapter.test",
 				ImportState:       true,
 				ImportStateVerify: true,
-				ImportStateVerifyIgnore: []string{
-					"payload_json",
-				},
 			},
 			{
 				Config: testAccLookupDataAdapterResourceConfig(updatedName),
@@ -63,9 +63,6 @@ func TestAccLookupCacheResource(t *testing.T) {
 				ResourceName:      "graylog_lookup_cache.test",
 				ImportState:       true,
 				ImportStateVerify: true,
-				ImportStateVerifyIgnore: []string{
-					"payload_json",
-				},
 			},
 			{
 				Config: testAccLookupCacheResourceConfig(updatedName),
@@ -95,9 +92,6 @@ func TestAccLookupTableResource(t *testing.T) {
 				ResourceName:      "graylog_lookup_table.test",
 				ImportState:       true,
 				ImportStateVerify: true,
-				ImportStateVerifyIgnore: []string{
-					"payload_json",
-				},
 			},
 			{
 				Config: testAccLookupTableResourceConfig("tf-lktbl-upd-"+suffix, "tf-lkcache-"+suffix, "tf-lkadapter-"+suffix),
@@ -112,22 +106,21 @@ func TestAccLookupTableResource(t *testing.T) {
 func testAccLookupDataAdapterResourceConfig(name string) string {
 	return fmt.Sprintf(`
 resource "graylog_lookup_data_adapter" "test" {
-  payload_json = jsonencode({
-    title       = %[1]q
-    name        = %[1]q
-    description = "Terraform acceptance lookup adapter"
-    config = {
-      type                    = "csvfile"
-      path                    = "/tmp/lookup-table.csv"
-      separator               = ","
-      quotechar               = "\""
-      key_column              = "key"
-      value_column            = "value"
-      check_interval          = 60
-      case_insensitive_lookup = false
-      multi_value_lookup      = false
-      cidr_lookup             = false
-    }
+  title       = %[1]q
+  name        = %[1]q
+  description = "Terraform acceptance lookup adapter"
+  custom_error_ttl_enabled = false
+  config_json = jsonencode({
+    type                    = "csvfile"
+    path                    = "/tmp/lookup-table.csv"
+    separator               = ","
+    quotechar               = "\""
+    key_column              = "key"
+    value_column            = "value"
+    check_interval          = 60
+    case_insensitive_lookup = false
+    multi_value_lookup      = false
+    cidr_lookup             = false
   })
 }
 `, name)
@@ -136,13 +129,11 @@ resource "graylog_lookup_data_adapter" "test" {
 func testAccLookupCacheResourceConfig(name string) string {
 	return fmt.Sprintf(`
 resource "graylog_lookup_cache" "test" {
-  payload_json = jsonencode({
-    title       = %[1]q
-    name        = %[1]q
-    description = "Terraform acceptance lookup cache"
-    config = {
-      type = "none"
-    }
+  title       = %[1]q
+  name        = %[1]q
+  description = "Terraform acceptance lookup cache"
+  config_json = jsonencode({
+    type = "none"
   })
 }
 `, name)
@@ -151,48 +142,43 @@ resource "graylog_lookup_cache" "test" {
 func testAccLookupTableResourceConfig(tableName, cacheName, adapterName string) string {
 	return fmt.Sprintf(`
 resource "graylog_lookup_data_adapter" "adapter" {
-  payload_json = jsonencode({
-    title       = %[3]q
-    name        = %[3]q
-    description = "Terraform acceptance lookup adapter for table"
-    config = {
-      type                    = "csvfile"
-      path                    = "/tmp/lookup-table.csv"
-      separator               = ","
-      quotechar               = "\""
-      key_column              = "key"
-      value_column            = "value"
-      check_interval          = 60
-      case_insensitive_lookup = false
-      multi_value_lookup      = false
-      cidr_lookup             = false
-    }
+  title       = %[3]q
+  name        = %[3]q
+  description = "Terraform acceptance lookup adapter for table"
+  custom_error_ttl_enabled = false
+  config_json = jsonencode({
+    type                    = "csvfile"
+    path                    = "/tmp/lookup-table.csv"
+    separator               = ","
+    quotechar               = "\""
+    key_column              = "key"
+    value_column            = "value"
+    check_interval          = 60
+    case_insensitive_lookup = false
+    multi_value_lookup      = false
+    cidr_lookup             = false
   })
 }
 
 resource "graylog_lookup_cache" "cache" {
-  payload_json = jsonencode({
-    title       = %[2]q
-    name        = %[2]q
-    description = "Terraform acceptance lookup cache for table"
-    config = {
-      type = "none"
-    }
+  title       = %[2]q
+  name        = %[2]q
+  description = "Terraform acceptance lookup cache for table"
+  config_json = jsonencode({
+    type = "none"
   })
 }
 
 resource "graylog_lookup_table" "test" {
-  payload_json = jsonencode({
-    title                     = %[1]q
-    name                      = %[1]q
-    description               = "Terraform acceptance lookup table"
-    cache_id                  = graylog_lookup_cache.cache.id
-    data_adapter_id           = graylog_lookup_data_adapter.adapter.id
-    default_single_value      = ""
-    default_single_value_type = "NULL"
-    default_multi_value       = "[]"
-    default_multi_value_type  = "OBJECT"
-  })
+  title                     = %[1]q
+  name                      = %[1]q
+  description               = "Terraform acceptance lookup table"
+  cache_id                  = graylog_lookup_cache.cache.id
+  data_adapter_id           = graylog_lookup_data_adapter.adapter.id
+  default_single_value      = ""
+  default_single_value_type = "NULL"
+  default_multi_value       = "[]"
+  default_multi_value_type  = "OBJECT"
 }
 `, tableName, cacheName, adapterName)
 }

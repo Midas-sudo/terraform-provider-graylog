@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package provider
 
 import (
@@ -31,9 +34,6 @@ func TestAccOutputResource(t *testing.T) {
 				ResourceName:      "graylog_output.test",
 				ImportState:       true,
 				ImportStateVerify: true,
-				ImportStateVerifyIgnore: []string{
-					"payload_json",
-				},
 			},
 			{
 				Config: testAccOutputResourceConfig(updatedTitle),
@@ -67,9 +67,6 @@ func TestAccExtractorResource(t *testing.T) {
 				ImportState:       true,
 				ImportStateIdFunc: testAccExtractorImportIDFunc("graylog_extractor.test"),
 				ImportStateVerify: true,
-				ImportStateVerifyIgnore: []string{
-					"payload_json",
-				},
 			},
 			{
 				Config: testAccExtractorResourceConfig(updatedTitle),
@@ -101,9 +98,6 @@ func TestAccGrokPatternResource(t *testing.T) {
 				ResourceName:      "graylog_grok_pattern.test",
 				ImportState:       true,
 				ImportStateVerify: true,
-				ImportStateVerifyIgnore: []string{
-					"payload_json",
-				},
 			},
 			{
 				Config: testAccGrokPatternResourceConfig(updatedName, "foo(?<baz>.*)"),
@@ -119,12 +113,11 @@ func TestAccGrokPatternResource(t *testing.T) {
 func testAccOutputResourceConfig(title string) string {
 	return fmt.Sprintf(`
 resource "graylog_output" "test" {
-  payload_json = jsonencode({
-    title = %[1]q
-    type  = "org.graylog2.outputs.LoggingOutput"
-    configuration = {
-      prefix = "terraform-output:"
-    }
+  title = %[1]q
+  type  = "org.graylog2.outputs.LoggingOutput"
+
+  configuration_json = jsonencode({
+    prefix = "terraform-output:"
   })
 }
 `, title)
@@ -136,18 +129,16 @@ data "graylog_inputs" "all" {}
 
 resource "graylog_extractor" "test" {
   input_id = data.graylog_inputs.all.inputs[0].id
-  payload_json = jsonencode({
-    title           = %[1]q
-    source_field    = "message"
-    target_field    = "message_copy"
-    extractor_type  = "copy_input"
-    cursor_strategy = "copy"
-    condition_type  = "none"
-    condition_value = ""
-    extractor_config = {}
-    converters       = []
-    order            = 0
-  })
+  title           = %[1]q
+  source_field    = "message"
+  target_field    = "message_copy"
+  extractor_type  = "copy_input"
+  cursor_strategy = "copy"
+  condition_type  = "none"
+  condition_value = ""
+  extractor_config_json = jsonencode({})
+  converters_json       = jsonencode([])
+  order                 = 0
 }
 `, title)
 }
@@ -155,10 +146,8 @@ resource "graylog_extractor" "test" {
 func testAccGrokPatternResourceConfig(name, pattern string) string {
 	return fmt.Sprintf(`
 resource "graylog_grok_pattern" "test" {
-  payload_json = jsonencode({
-    name    = %[1]q
-    pattern = %[2]q
-  })
+  name    = %[1]q
+  pattern = %[2]q
 }
 `, name, pattern)
 }

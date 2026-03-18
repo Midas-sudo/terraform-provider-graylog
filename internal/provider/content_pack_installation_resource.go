@@ -1,10 +1,15 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -27,10 +32,11 @@ type ContentPackInstallationResource struct {
 }
 
 type ContentPackInstallationResourceModel struct {
-	ID            types.String `tfsdk:"id"`
-	ContentPackID types.String `tfsdk:"content_pack_id"`
-	Revision      types.Int64  `tfsdk:"revision"`
-	PayloadJSON   types.String `tfsdk:"payload_json"`
+	ID             types.String `tfsdk:"id"`
+	ContentPackID  types.String `tfsdk:"content_pack_id"`
+	Revision       types.Int64  `tfsdk:"revision"`
+	Comment        types.String `tfsdk:"comment"`
+	ParametersJSON types.String `tfsdk:"parameters_json"`
 }
 
 func (r *ContentPackInstallationResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
@@ -51,9 +57,13 @@ func (r *ContentPackInstallationResource) Schema(_ context.Context, _ resource.S
 			"revision": schema.Int64Attribute{
 				Required: true,
 			},
-			"payload_json": schema.StringAttribute{
-				Required:            true,
-				MarkdownDescription: "Raw JSON payload for installation request entity (`comment`, `parameters`).",
+			"comment": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "Optional installation comment.",
+			},
+			"parameters_json": schema.StringAttribute{
+				Optional:            true,
+				MarkdownDescription: "JSON object with content pack installation parameters.",
 			},
 		},
 	}
@@ -78,7 +88,7 @@ func (r *ContentPackInstallationResource) Create(ctx context.Context, req resour
 		return
 	}
 
-	installReq, diags := contentPackInstallationFromPayload(data.PayloadJSON.ValueString())
+	installReq, diags := contentPackInstallationRequestFromModel(&data)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -91,9 +101,6 @@ func (r *ContentPackInstallationResource) Create(ctx context.Context, req resour
 	}
 
 	mapContentPackInstallationToResourceModel(created, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalContentPackInstallationJSON(installReq))
-	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -139,7 +146,7 @@ func (r *ContentPackInstallationResource) Update(ctx context.Context, req resour
 		return
 	}
 
-	installReq, diags := contentPackInstallationFromPayload(data.PayloadJSON.ValueString())
+	installReq, diags := contentPackInstallationRequestFromModel(&data)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -152,9 +159,6 @@ func (r *ContentPackInstallationResource) Update(ctx context.Context, req resour
 	}
 
 	mapContentPackInstallationToResourceModel(created, &data)
-	if data.PayloadJSON.IsNull() || data.PayloadJSON.IsUnknown() || data.PayloadJSON.ValueString() == "" {
-		data.PayloadJSON = types.StringValue(marshalContentPackInstallationJSON(installReq))
-	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -178,4 +182,24 @@ func (r *ContentPackInstallationResource) ImportState(ctx context.Context, req r
 	}
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("content_pack_id"), parts[0])...)
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), parts[1])...)
+}
+
+func contentPackInstallationRequestFromModel(data *ContentPackInstallationResourceModel) (*client.ContentPackInstallationRequest, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	req := &client.ContentPackInstallationRequest{}
+
+	if !data.Comment.IsNull() && !data.Comment.IsUnknown() {
+		req.Comment = data.Comment.ValueString()
+	}
+
+	if !data.ParametersJSON.IsNull() && !data.ParametersJSON.IsUnknown() && data.ParametersJSON.ValueString() != "" {
+		var params map[string]interface{}
+		if err := json.Unmarshal([]byte(data.ParametersJSON.ValueString()), &params); err != nil {
+			diags.AddError("Invalid parameters_json", fmt.Sprintf("Failed to parse parameters_json: %v", err))
+			return req, diags
+		}
+		req.Parameters = params
+	}
+
+	return req, diags
 }

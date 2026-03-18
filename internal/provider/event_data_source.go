@@ -1,3 +1,6 @@
+// Copyright (c) HashiCorp, Inc.
+// SPDX-License-Identifier: MPL-2.0
+
 package provider
 
 import (
@@ -25,7 +28,7 @@ type EventNotificationDataSourceModel struct {
 	ID          types.String `tfsdk:"id"`
 	Title       types.String `tfsdk:"title"`
 	Description types.String `tfsdk:"description"`
-	PayloadJSON types.String `tfsdk:"payload_json"`
+	ConfigJSON  types.String `tfsdk:"config_json"`
 }
 
 func (d *EventNotificationDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -45,9 +48,9 @@ func (d *EventNotificationDataSource) Schema(_ context.Context, _ datasource.Sch
 			"description": schema.StringAttribute{
 				Computed: true,
 			},
-			"payload_json": schema.StringAttribute{
+			"config_json": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "Raw JSON payload for the event notification.",
+				MarkdownDescription: "JSON object with event notification configuration.",
 			},
 		},
 	}
@@ -112,7 +115,7 @@ func (d *EventNotificationsDataSource) Schema(_ context.Context, _ datasource.Sc
 						"id":          schema.StringAttribute{Computed: true},
 						"title":       schema.StringAttribute{Computed: true},
 						"description": schema.StringAttribute{Computed: true},
-						"payload_json": schema.StringAttribute{
+						"config_json": schema.StringAttribute{
 							Computed: true,
 						},
 					},
@@ -163,11 +166,18 @@ type EventDefinitionDataSource struct {
 }
 
 type EventDefinitionDataSourceModel struct {
-	ID          types.String `tfsdk:"id"`
-	Title       types.String `tfsdk:"title"`
-	Description types.String `tfsdk:"description"`
-	State       types.String `tfsdk:"state"`
-	PayloadJSON types.String `tfsdk:"payload_json"`
+	ID                       types.String   `tfsdk:"id"`
+	Title                    types.String   `tfsdk:"title"`
+	Description              types.String   `tfsdk:"description"`
+	State                    types.String   `tfsdk:"state"`
+	Priority                 types.Int64    `tfsdk:"priority"`
+	Alert                    types.Bool     `tfsdk:"alert"`
+	ConfigJSON               types.String   `tfsdk:"config_json"`
+	FieldSpecJSON            types.String   `tfsdk:"field_spec_json"`
+	KeySpec                  []types.String `tfsdk:"key_spec"`
+	NotificationSettingsJSON types.String   `tfsdk:"notification_settings_json"`
+	NotificationsJSON        types.String   `tfsdk:"notifications_json"`
+	StorageJSON              types.String   `tfsdk:"storage_json"`
 }
 
 func (d *EventDefinitionDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -190,10 +200,14 @@ func (d *EventDefinitionDataSource) Schema(_ context.Context, _ datasource.Schem
 			"state": schema.StringAttribute{
 				Computed: true,
 			},
-			"payload_json": schema.StringAttribute{
-				Computed:            true,
-				MarkdownDescription: "Raw JSON payload for the event definition.",
-			},
+			"priority":                   schema.Int64Attribute{Computed: true},
+			"alert":                      schema.BoolAttribute{Computed: true},
+			"config_json":                schema.StringAttribute{Computed: true},
+			"field_spec_json":            schema.StringAttribute{Computed: true},
+			"key_spec":                   schema.ListAttribute{Computed: true, ElementType: types.StringType},
+			"notification_settings_json": schema.StringAttribute{Computed: true},
+			"notifications_json":         schema.StringAttribute{Computed: true},
+			"storage_json":               schema.StringAttribute{Computed: true},
 		},
 	}
 }
@@ -257,10 +271,15 @@ func (d *EventDefinitionsDataSource) Schema(_ context.Context, _ datasource.Sche
 						"id":          schema.StringAttribute{Computed: true},
 						"title":       schema.StringAttribute{Computed: true},
 						"description": schema.StringAttribute{Computed: true},
-						"state":       schema.StringAttribute{Computed: true},
-						"payload_json": schema.StringAttribute{
-							Computed: true,
-						},
+						"state":                      schema.StringAttribute{Computed: true},
+						"priority":                   schema.Int64Attribute{Computed: true},
+						"alert":                      schema.BoolAttribute{Computed: true},
+						"config_json":                schema.StringAttribute{Computed: true},
+						"field_spec_json":            schema.StringAttribute{Computed: true},
+						"key_spec":                   schema.ListAttribute{Computed: true, ElementType: types.StringType},
+						"notification_settings_json": schema.StringAttribute{Computed: true},
+						"notifications_json":         schema.StringAttribute{Computed: true},
+						"storage_json":               schema.StringAttribute{Computed: true},
 					},
 				},
 			},
