@@ -28,6 +28,9 @@ Targets **Graylog 6.x** and designed for forward compatibility with **7.x**.
 | `graylog_lookup_data_adapter` | Manage Graylog lookup data adapters via raw JSON payload |
 | `graylog_lookup_cache` | Manage Graylog lookup caches via raw JSON payload |
 | `graylog_lookup_table` | Manage Graylog lookup tables via raw JSON payload |
+| `graylog_output` | Manage Graylog outputs via raw JSON payload |
+| `graylog_extractor` | Manage Graylog input extractors via raw JSON payload |
+| `graylog_grok_pattern` | Manage Graylog grok patterns via raw JSON payload |
 
 ### Data Sources
 
@@ -63,6 +66,11 @@ Targets **Graylog 6.x** and designed for forward compatibility with **7.x**.
 | `graylog_lookup_caches` | List all lookup caches |
 | `graylog_lookup_table` | Look up a single lookup table by ID |
 | `graylog_lookup_tables` | List all lookup tables |
+| `graylog_output` | Look up a single output by ID |
+| `graylog_outputs` | List all outputs |
+| `graylog_extractor` | Look up a single extractor by input and extractor IDs |
+| `graylog_extractors` | List extractors for a specific input |
+| `graylog_grok_patterns` | List all grok patterns |
 
 ## Requirements
 
