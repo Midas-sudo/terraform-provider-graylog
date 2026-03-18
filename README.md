@@ -22,6 +22,9 @@ Targets **Graylog 6.x** and designed for forward compatibility with **7.x**.
 | `graylog_entity_share` | Manage entity sharing capabilities for Graylog GRNs |
 | `graylog_view` | Manage Graylog saved searches/views via raw JSON payload |
 | `graylog_dashboard` | Manage Graylog dashboards via raw JSON payload |
+| `graylog_event_definition` | Manage Graylog event definitions via raw JSON payload |
+| `graylog_event_notification` | Manage Graylog event notifications via raw JSON payload |
+| `graylog_event_definition_notification_binding` | Manage notification bindings attached to event definitions |
 
 ### Data Sources
 
@@ -47,6 +50,10 @@ Targets **Graylog 6.x** and designed for forward compatibility with **7.x**.
 | `graylog_views` | List all saved views |
 | `graylog_dashboard` | Look up a single dashboard by ID |
 | `graylog_dashboards` | List all dashboards |
+| `graylog_event_definition` | Look up a single event definition by ID |
+| `graylog_event_definitions` | List all event definitions |
+| `graylog_event_notification` | Look up a single event notification by ID |
+| `graylog_event_notifications` | List all event notifications |
 
 ## Requirements
 
