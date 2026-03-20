@@ -1,3 +1,10 @@
+## 0.10.1 (Mar 20, 2026)
+
+ENHANCEMENTS:
+
+- Add import examples for all resources under `examples/resources/*/import.sh`.
+- Regenerate docs so every resource page includes an `Import` section with correct ID format examples.
+
 ## 0.10.0 (Mar 20, 2026)
 
 FEATURES:
