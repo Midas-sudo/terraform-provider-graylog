@@ -53,7 +53,7 @@ func (d *InputDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, 
 			},
 			"type": schema.StringAttribute{
 				Computed:            true,
-				MarkdownDescription: "The input type class name.",
+				MarkdownDescription: "The input type: short alias when known (e.g. `SyslogUDPInput`), otherwise the full Java type.",
 			},
 			"global": schema.BoolAttribute{
 				Computed:            true,
@@ -102,7 +102,7 @@ func (d *InputDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 	}
 
 	data.Title = types.StringValue(input.Title)
-	data.Type = types.StringValue(input.Type)
+	data.Type = types.StringValue(collapseInputType(input.Type))
 	data.Global = types.BoolValue(input.Global)
 	data.CreatedAt = types.StringValue(input.CreatedAt)
 	if input.Node != "" {
@@ -185,7 +185,7 @@ func (d *InputsDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		item := InputDataSourceModel{
 			ID:        types.StringValue(input.ID),
 			Title:     types.StringValue(input.Title),
-			Type:      types.StringValue(input.Type),
+			Type:      types.StringValue(collapseInputType(input.Type)),
 			Global:    types.BoolValue(input.Global),
 			CreatedAt: types.StringValue(input.CreatedAt),
 		}
@@ -236,7 +236,7 @@ func (d *InputTypesDataSource) Schema(_ context.Context, _ datasource.SchemaRequ
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						"type": schema.StringAttribute{Computed: true, MarkdownDescription: "The input type class name."},
+						"type": schema.StringAttribute{Computed: true, MarkdownDescription: "Short alias when known, else full Java type."},
 						"name": schema.StringAttribute{Computed: true, MarkdownDescription: "Human-readable name of the input type."},
 					},
 				},
@@ -268,7 +268,7 @@ func (d *InputTypesDataSource) Read(ctx context.Context, req datasource.ReadRequ
 	var data InputTypesDataSourceModel
 	for typeName, typeInfo := range result.Types {
 		data.Types = append(data.Types, InputTypeModel{
-			Type: typeName,
+			Type: collapseInputType(typeName),
 			Name: typeInfo.Name,
 		})
 	}

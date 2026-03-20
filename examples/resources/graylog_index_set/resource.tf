@@ -7,15 +7,15 @@ resource "graylog_index_set" "example" {
   writable                 = true
   index_analyzer           = "standard"
   use_legacy_rotation      = false
-  rotation_strategy_class  = "org.graylog2.indexer.rotation.strategies.TimeBasedSizeOptimizingStrategy"
-  retention_strategy_class = "org.graylog2.indexer.retention.strategies.DeletionRetentionStrategy"
+  rotation_strategy_class  = "TimeBasedSizeOptimizingStrategy"
+  retention_strategy_class = "DeletionRetentionStrategy"
 
   rotation_strategy {
-    type = "org.graylog2.indexer.rotation.strategies.TimeBasedSizeOptimizingStrategyConfig"
+    type = "TimeBasedSizeOptimizingStrategyConfig"
   }
 
   retention_strategy {
-    type                  = "org.graylog2.indexer.retention.strategies.DeletionRetentionStrategyConfig"
+    type                  = "DeletionRetentionStrategyConfig"
     max_number_of_indices = 20
   }
 

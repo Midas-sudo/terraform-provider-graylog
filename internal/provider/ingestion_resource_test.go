@@ -26,7 +26,7 @@ func TestAccOutputResource(t *testing.T) {
 				Config: testAccOutputResourceConfig(title),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("graylog_output.test", "title", title),
-					resource.TestCheckResourceAttr("graylog_output.test", "type", "org.graylog2.outputs.LoggingOutput"),
+					resource.TestCheckResourceAttr("graylog_output.test", "type", "LoggingOutput"),
 					resource.TestCheckResourceAttrSet("graylog_output.test", "id"),
 				),
 			},
@@ -114,7 +114,7 @@ func testAccOutputResourceConfig(title string) string {
 	return fmt.Sprintf(`
 resource "graylog_output" "test" {
   title = %[1]q
-  type  = "org.graylog2.outputs.LoggingOutput"
+  type  = "LoggingOutput"
 
   configuration_json = jsonencode({
     prefix = "terraform-output:"

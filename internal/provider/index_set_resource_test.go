@@ -85,8 +85,8 @@ func TestAccIndexSetResourceDataTiering(t *testing.T) {
 				Config: testAccIndexSetResourceDataTieringConfig(prefix, "Terraform data tiering index set"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("graylog_index_set.test", "index_prefix", prefix),
-					resource.TestCheckResourceAttr("graylog_index_set.test", "rotation_strategy_class", "org.graylog2.indexer.rotation.strategies.TimeBasedSizeOptimizingStrategy"),
-					resource.TestCheckResourceAttr("graylog_index_set.test", "rotation_strategy.type", "org.graylog2.indexer.rotation.strategies.TimeBasedSizeOptimizingStrategyConfig"),
+					resource.TestCheckResourceAttr("graylog_index_set.test", "rotation_strategy_class", "TimeBasedSizeOptimizingStrategy"),
+					resource.TestCheckResourceAttr("graylog_index_set.test", "rotation_strategy.type", "TimeBasedSizeOptimizingStrategyConfig"),
 					resource.TestCheckResourceAttr("graylog_index_set.test", "data_tiering.type", "hot_only"),
 					resource.TestCheckResourceAttr("graylog_index_set.test", "data_tiering.index_lifetime_min", "P30D"),
 					resource.TestCheckResourceAttr("graylog_index_set.test", "data_tiering.index_lifetime_max", "P40D"),
@@ -125,17 +125,17 @@ resource "graylog_index_set" "test" {
   replicas                 = 0
   writable                 = true
   index_analyzer           = "standard"
-  rotation_strategy_class  = "org.graylog2.indexer.rotation.strategies.MessageCountRotationStrategy"
-  retention_strategy_class = "org.graylog2.indexer.retention.strategies.DeletionRetentionStrategy"
+  rotation_strategy_class  = "MessageCountRotationStrategy"
+  retention_strategy_class = "DeletionRetentionStrategy"
   set_as_default           = false
   sync_template            = true
 
   rotation_strategy {
-    type = "org.graylog2.indexer.rotation.strategies.MessageCountRotationStrategyConfig"
+    type = "MessageCountRotationStrategyConfig"
   }
 
   retention_strategy {
-    type                  = "org.graylog2.indexer.retention.strategies.DeletionRetentionStrategyConfig"
+    type                  = "DeletionRetentionStrategyConfig"
     max_number_of_indices = 20
   }
 }
@@ -167,17 +167,17 @@ resource "graylog_index_set" "test" {
   writable                 = true
   index_analyzer           = "standard"
   use_legacy_rotation      = false
-  rotation_strategy_class  = "org.graylog2.indexer.rotation.strategies.TimeBasedSizeOptimizingStrategy"
-  retention_strategy_class = "org.graylog2.indexer.retention.strategies.DeletionRetentionStrategy"
+  rotation_strategy_class  = "TimeBasedSizeOptimizingStrategy"
+  retention_strategy_class = "DeletionRetentionStrategy"
   set_as_default           = false
   sync_template            = true
 
   rotation_strategy {
-    type = "org.graylog2.indexer.rotation.strategies.TimeBasedSizeOptimizingStrategyConfig"
+    type = "TimeBasedSizeOptimizingStrategyConfig"
   }
 
   retention_strategy {
-    type                  = "org.graylog2.indexer.retention.strategies.DeletionRetentionStrategyConfig"
+    type                  = "DeletionRetentionStrategyConfig"
     max_number_of_indices = 20
   }
 

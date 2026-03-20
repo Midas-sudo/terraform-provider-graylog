@@ -1,6 +1,6 @@
 resource "graylog_input" "syslog_udp" {
   title  = "Syslog UDP"
-  type   = "org.graylog2.inputs.syslog.udp.SyslogUDPInput"
+  type   = "SyslogUDPInput"
   global = true
 
   configuration = jsonencode({

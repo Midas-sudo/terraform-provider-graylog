@@ -63,8 +63,10 @@ func (r *InputResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 				MarkdownDescription: "A descriptive name for the input.",
 			},
 			"type": schema.StringAttribute{
-				Required:            true,
-				MarkdownDescription: "The input type class name (e.g. `org.graylog2.inputs.syslog.udp.SyslogUDPInput`).",
+				Required: true,
+				MarkdownDescription: "Graylog input type: use the short class name (e.g. `SyslogUDPInput`, `GELFUDPInput`) " +
+					"or the full Java type (`org.graylog2.inputs....`). Short names are expanded on create/update " +
+					"and collapsed in state when they match a known built-in.",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
@@ -120,7 +122,7 @@ func (r *InputResource) Create(ctx context.Context, req resource.CreateRequest, 
 
 	createReq := &client.InputCreateRequest{
 		Title:         data.Title.ValueString(),
-		Type:          data.Type.ValueString(),
+		Type:          expandInputType(data.Type.ValueString()),
 		Global:        data.Global.ValueBool(),
 		Node:          data.Node.ValueString(),
 		Configuration: config,
@@ -180,7 +182,7 @@ func (r *InputResource) Update(ctx context.Context, req resource.UpdateRequest, 
 
 	updateReq := &client.InputUpdateRequest{
 		Title:         data.Title.ValueString(),
-		Type:          data.Type.ValueString(),
+		Type:          expandInputType(data.Type.ValueString()),
 		Global:        data.Global.ValueBool(),
 		Node:          data.Node.ValueString(),
 		Configuration: config,
@@ -222,7 +224,7 @@ func (r *InputResource) ImportState(ctx context.Context, req resource.ImportStat
 func mapInputToModel(input *client.Input, data *InputResourceModel) {
 	data.ID = types.StringValue(input.ID)
 	data.Title = types.StringValue(input.Title)
-	data.Type = types.StringValue(input.Type)
+	data.Type = types.StringValue(collapseInputType(input.Type))
 	data.Global = types.BoolValue(input.Global)
 
 	if input.Node != "" {

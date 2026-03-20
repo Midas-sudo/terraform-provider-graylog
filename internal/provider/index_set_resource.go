@@ -150,12 +150,12 @@ func (r *IndexSetResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				MarkdownDescription: "Whether legacy rotation mode is enabled.",
 			},
 			"rotation_strategy_class": schema.StringAttribute{
-				Required:            true,
-				MarkdownDescription: "Rotation strategy class name.",
+				Required: true,
+				MarkdownDescription: "Rotation strategy class. Use a short name such as `MessageCountRotationStrategy`, `SizeBasedRotationStrategy`, `TimeBasedRotationStrategy`, or `TimeBasedSizeOptimizingStrategy`, or the full Graylog Java class (e.g. `org.graylog2.indexer.rotation.strategies.MessageCountRotationStrategy`).",
 			},
 			"retention_strategy_class": schema.StringAttribute{
-				Required:            true,
-				MarkdownDescription: "Retention strategy class name.",
+				Required: true,
+				MarkdownDescription: "Retention strategy class. Use a short name such as `DeletionRetentionStrategy` or `NoopRetentionStrategy`, or the full Graylog Java class (e.g. `org.graylog2.indexer.retention.strategies.DeletionRetentionStrategy`).",
 			},
 			"set_as_default": schema.BoolAttribute{
 				Optional:            true,
@@ -179,8 +179,8 @@ func (r *IndexSetResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				MarkdownDescription: "Rotation strategy settings.",
 				Attributes: map[string]schema.Attribute{
 					"type": schema.StringAttribute{
-						Required:            true,
-						MarkdownDescription: "Rotation strategy config type.",
+						Required: true,
+						MarkdownDescription: "Rotation strategy config type. Use a short name such as `MessageCountRotationStrategyConfig` matching the rotation strategy, or the full Graylog config class name.",
 					},
 				},
 			},
@@ -188,8 +188,8 @@ func (r *IndexSetResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				MarkdownDescription: "Retention strategy settings.",
 				Attributes: map[string]schema.Attribute{
 					"type": schema.StringAttribute{
-						Required:            true,
-						MarkdownDescription: "Retention strategy config type.",
+						Required: true,
+						MarkdownDescription: "Retention strategy config type. Use a short name such as `DeletionRetentionStrategyConfig` or `NoopRetentionStrategyConfig`, or the full Graylog config class name.",
 					},
 					"max_number_of_indices": schema.Int64Attribute{
 						Optional:            true,
@@ -376,17 +376,17 @@ func toIndexSetRequest(data *IndexSetResourceModel, id string) *client.IndexSet 
 		Writable:                        data.Writable.ValueBool(),
 		IndexAnalyzer:                   data.IndexAnalyzer.ValueString(),
 		UseLegacyRotation:               data.UseLegacyRotation.ValueBool(),
-		RotationStrategyClass:           data.RotationStrategyClass.ValueString(),
-		RetentionStrategyClass:          data.RetentionStrategyClass.ValueString(),
+		RotationStrategyClass:           expandRotationStrategyClass(data.RotationStrategyClass.ValueString()),
+		RetentionStrategyClass:          expandRetentionStrategyClass(data.RetentionStrategyClass.ValueString()),
 	}
 	if data.RotationStrategy != nil {
 		req.RotationStrategy = client.RotationStrategyConfig{
-			Type: data.RotationStrategy.Type.ValueString(),
+			Type: expandRotationStrategyConfigType(data.RotationStrategy.Type.ValueString()),
 		}
 	}
 	if data.RetentionStrategy != nil {
 		req.RetentionStrategy = client.RetentionStrategyConfig{
-			Type:               data.RetentionStrategy.Type.ValueString(),
+			Type:               expandRetentionStrategyConfigType(data.RetentionStrategy.Type.ValueString()),
 			MaxNumberOfIndices: data.RetentionStrategy.MaxNumberOfIndices.ValueInt64(),
 		}
 	}
@@ -413,19 +413,19 @@ func mapIndexSetToModel(src *client.IndexSet, dst *IndexSetResourceModel) {
 	dst.Writable = types.BoolValue(src.Writable)
 	dst.IndexAnalyzer = types.StringValue(src.IndexAnalyzer)
 	dst.UseLegacyRotation = types.BoolValue(src.UseLegacyRotation)
-	dst.RotationStrategyClass = types.StringValue(src.RotationStrategyClass)
-	dst.RetentionStrategyClass = types.StringValue(src.RetentionStrategyClass)
+	dst.RotationStrategyClass = types.StringValue(collapseRotationStrategyClass(src.RotationStrategyClass))
+	dst.RetentionStrategyClass = types.StringValue(collapseRetentionStrategyClass(src.RetentionStrategyClass))
 	dst.IsDefault = types.BoolValue(src.Default)
 	if src.RotationStrategy.Type != "" {
 		dst.RotationStrategy = &RotationStrategyModel{
-			Type: types.StringValue(src.RotationStrategy.Type),
+			Type: types.StringValue(collapseRotationStrategyConfigType(src.RotationStrategy.Type)),
 		}
 	} else {
 		dst.RotationStrategy = nil
 	}
 	if src.RetentionStrategy.Type != "" || src.RetentionStrategy.MaxNumberOfIndices != 0 {
 		dst.RetentionStrategy = &RetentionStrategyModel{
-			Type:               types.StringValue(src.RetentionStrategy.Type),
+			Type:               types.StringValue(collapseRetentionStrategyConfigType(src.RetentionStrategy.Type)),
 			MaxNumberOfIndices: types.Int64Value(src.RetentionStrategy.MaxNumberOfIndices),
 		}
 	} else {

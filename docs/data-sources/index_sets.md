@@ -41,9 +41,9 @@ Read-Only:
 - `index_optimization_max_num_segments` (Number)
 - `index_prefix` (String)
 - `replicas` (Number)
-- `retention_strategy_class` (String)
-- `retention_strategy_type` (String)
-- `rotation_strategy_class` (String)
-- `rotation_strategy_type` (String)
+- `retention_strategy_class` (String) Retention strategy class (short name when known).
+- `retention_strategy_type` (String) Retention strategy config type (short name when known).
+- `rotation_strategy_class` (String) Rotation strategy class (short name when known).
+- `rotation_strategy_type` (String) Rotation strategy config type (short name when known).
 - `shards` (Number)
 - `title` (String)

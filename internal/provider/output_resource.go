@@ -49,7 +49,11 @@ func (r *OutputResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				Computed: true,
 			},
 			"title": schema.StringAttribute{Required: true},
-			"type":  schema.StringAttribute{Required: true},
+			"type": schema.StringAttribute{
+				Required: true,
+				MarkdownDescription: "Graylog output type: short name (e.g. `LoggingOutput`, `GelfOutput`) or full Java type " +
+					"(`org.graylog2.outputs....`). Short names expand on API calls and collapse in state when known.",
+			},
 			"configuration_json": schema.StringAttribute{
 				Required:            true,
 				MarkdownDescription: "JSON object with plugin-specific output configuration.",
@@ -174,7 +178,7 @@ func outputFromModel(data *OutputResourceModel) (*client.Output, diag.Diagnostic
 
 	return &client.Output{
 		Title:         data.Title.ValueString(),
-		Type:          data.Type.ValueString(),
+		Type:          expandOutputType(data.Type.ValueString()),
 		Configuration: cfg,
 	}, diags
 }

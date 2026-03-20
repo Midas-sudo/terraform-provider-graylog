@@ -78,7 +78,7 @@ func marshalGrokPatternJSON(pattern *client.GrokPattern) string {
 func mapOutputToResourceModel(output *client.Output, data *OutputResourceModel) {
 	data.ID = types.StringValue(output.ID)
 	data.Title = types.StringValue(output.Title)
-	data.Type = types.StringValue(output.Type)
+	data.Type = types.StringValue(collapseOutputType(output.Type))
 }
 
 func mapExtractorToResourceModel(extractor *client.Extractor, data *ExtractorResourceModel) {
@@ -106,7 +106,7 @@ func mapGrokPatternToResourceModel(pattern *client.GrokPattern, data *GrokPatter
 func mapOutputToDataSourceModel(output *client.Output, data *OutputDataSourceModel) {
 	data.ID = types.StringValue(output.ID)
 	data.Title = types.StringValue(output.Title)
-	data.Type = types.StringValue(output.Type)
+	data.Type = types.StringValue(collapseOutputType(output.Type))
 	if output.Configuration == nil {
 		data.ConfigurationJSON = types.StringValue("{}")
 		return

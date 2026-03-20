@@ -31,6 +31,11 @@ func TestAccInputResource(t *testing.T) {
 						tfjsonpath.New("global"),
 						knownvalue.Bool(true),
 					),
+					statecheck.ExpectKnownValue(
+						"graylog_input.test",
+						tfjsonpath.New("type"),
+						knownvalue.StringExact("SyslogUDPInput"),
+					),
 				},
 			},
 			{
@@ -57,7 +62,7 @@ func testAccInputResourceConfig(title string) string {
 	return fmt.Sprintf(`
 resource "graylog_input" "test" {
   title  = %[1]q
-  type   = "org.graylog2.inputs.syslog.udp.SyslogUDPInput"
+  type   = "SyslogUDPInput"
   global = true
 
   configuration = jsonencode({

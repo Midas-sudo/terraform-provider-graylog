@@ -62,10 +62,22 @@ func (d *IndexSetDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 			"replicas":                 schema.Int64Attribute{Computed: true},
 			"default":                  schema.BoolAttribute{Computed: true},
 			"index_analyzer":           schema.StringAttribute{Computed: true},
-			"rotation_strategy_class":  schema.StringAttribute{Computed: true},
-			"retention_strategy_class": schema.StringAttribute{Computed: true},
-			"rotation_strategy_type":   schema.StringAttribute{Computed: true},
-			"retention_strategy_type":  schema.StringAttribute{Computed: true},
+			"rotation_strategy_class": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Rotation strategy class (short name when known, otherwise the value returned by Graylog).",
+			},
+			"retention_strategy_class": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Retention strategy class (short name when known, otherwise the value returned by Graylog).",
+			},
+			"rotation_strategy_type": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Rotation strategy config type (short name when known).",
+			},
+			"retention_strategy_type": schema.StringAttribute{
+				Computed:            true,
+				MarkdownDescription: "Retention strategy config type (short name when known).",
+			},
 		},
 	}
 }
@@ -111,10 +123,10 @@ func mapIndexSetDataSource(src *client.IndexSet, dst *IndexSetDataSourceModel) {
 	dst.Replicas = types.Int64Value(src.Replicas)
 	dst.Default = types.BoolValue(src.Default)
 	dst.IndexAnalyzer = types.StringValue(src.IndexAnalyzer)
-	dst.RotationStrategyClass = types.StringValue(src.RotationStrategyClass)
-	dst.RetentionStrategyClass = types.StringValue(src.RetentionStrategyClass)
-	dst.RotationStrategyType = types.StringValue(src.RotationStrategy.Type)
-	dst.RetentionStrategyType = types.StringValue(src.RetentionStrategy.Type)
+	dst.RotationStrategyClass = types.StringValue(collapseRotationStrategyClass(src.RotationStrategyClass))
+	dst.RetentionStrategyClass = types.StringValue(collapseRetentionStrategyClass(src.RetentionStrategyClass))
+	dst.RotationStrategyType = types.StringValue(collapseRotationStrategyConfigType(src.RotationStrategy.Type))
+	dst.RetentionStrategyType = types.StringValue(collapseRetentionStrategyConfigType(src.RetentionStrategy.Type))
 }
 
 // IndexSetsDataSource lists index sets.
@@ -155,10 +167,22 @@ func (d *IndexSetsDataSource) Schema(_ context.Context, _ datasource.SchemaReque
 						"replicas":                 schema.Int64Attribute{Computed: true},
 						"default":                  schema.BoolAttribute{Computed: true},
 						"index_analyzer":           schema.StringAttribute{Computed: true},
-						"rotation_strategy_class":  schema.StringAttribute{Computed: true},
-						"retention_strategy_class": schema.StringAttribute{Computed: true},
-						"rotation_strategy_type":   schema.StringAttribute{Computed: true},
-						"retention_strategy_type":  schema.StringAttribute{Computed: true},
+						"rotation_strategy_class": schema.StringAttribute{
+							Computed:            true,
+							MarkdownDescription: "Rotation strategy class (short name when known).",
+						},
+						"retention_strategy_class": schema.StringAttribute{
+							Computed:            true,
+							MarkdownDescription: "Retention strategy class (short name when known).",
+						},
+						"rotation_strategy_type": schema.StringAttribute{
+							Computed:            true,
+							MarkdownDescription: "Rotation strategy config type (short name when known).",
+						},
+						"retention_strategy_type": schema.StringAttribute{
+							Computed:            true,
+							MarkdownDescription: "Retention strategy config type (short name when known).",
+						},
 					},
 				},
 			},
