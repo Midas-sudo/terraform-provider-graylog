@@ -1,0 +1,1 @@
+terraform import graylog_pipeline_rule.extract_fields 69babedb10ce598257cccce0

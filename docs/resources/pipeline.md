@@ -42,3 +42,13 @@ resource "graylog_pipeline" "example" {
 - `created_at` (String) Timestamp when the pipeline was created.
 - `id` (String) The pipeline ID.
 - `modified_at` (String) Timestamp when the pipeline was last modified.
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+terraform import graylog_pipeline.example 69babedb10ce598257ccccec
+```

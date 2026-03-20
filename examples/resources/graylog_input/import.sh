@@ -1,0 +1,1 @@
+terraform import graylog_input.syslog_udp 69babedb10ce598257cccd13

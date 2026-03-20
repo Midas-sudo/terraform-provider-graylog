@@ -104,3 +104,13 @@ Optional:
 Required:
 
 - `type` (String) Rotation strategy config type. Use a short name such as `MessageCountRotationStrategyConfig` matching the rotation strategy, or the full Graylog config class name.
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+terraform import graylog_index_set.example 69babedb10ce598257cccd01
+```

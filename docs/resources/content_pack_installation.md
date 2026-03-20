@@ -37,3 +37,13 @@ resource "graylog_content_pack_installation" "example" {
 ### Read-Only
 
 - `id` (String) Installation ID returned by Graylog.
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+terraform import graylog_content_pack_installation.example 90be5e03-cb16-c802-6462-a244b4a342f3/69babedb10ce598257cccd71
+```

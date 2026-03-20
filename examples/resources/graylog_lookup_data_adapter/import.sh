@@ -1,0 +1,1 @@
+terraform import graylog_lookup_data_adapter.example 69babedb10ce598257cccd08

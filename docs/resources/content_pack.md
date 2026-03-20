@@ -49,3 +49,13 @@ resource "graylog_content_pack" "example" {
 ### Read-Only
 
 - `id` (String) Composite ID formatted as `content_pack_id/revision`.
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+terraform import graylog_content_pack.example 00000000-0000-0000-0000-ca4ba8ef0f4b/1
+```

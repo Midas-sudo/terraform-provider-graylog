@@ -1,0 +1,1 @@
+terraform import graylog_pipeline_connection.example 69babedb10ce598257cccd2c

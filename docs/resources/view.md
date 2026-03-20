@@ -45,3 +45,13 @@ resource "graylog_view" "example" {
 
 - `id` (String) The ID of this resource.
 - `type` (String) View type reported by Graylog (e.g. `SEARCH`).
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+terraform import graylog_view.example 69babedb10ce598257cccd16
+```

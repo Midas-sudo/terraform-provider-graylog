@@ -1,0 +1,1 @@
+terraform import graylog_extractor.example 69babedb10ce598257cccd13/af35b1f0-22db-11f1-af93-bebdcf2372e9

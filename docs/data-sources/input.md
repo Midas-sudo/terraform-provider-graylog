@@ -32,4 +32,4 @@ data "graylog_input" "example" {
 - `global` (Boolean) Whether the input runs on all nodes.
 - `node` (String) The node ID if the input is local.
 - `title` (String) The input title.
-- `type` (String) The input type class name.
+- `type` (String) The input type: short alias when known (e.g. `SyslogUDPInput`), otherwise the full Java type.

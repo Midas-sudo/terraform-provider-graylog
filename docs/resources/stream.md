@@ -40,3 +40,13 @@ resource "graylog_stream" "application_logs" {
 ### Read-Only
 
 - `id` (String) The stream ID.
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+terraform import graylog_stream.application_logs 69babedb10ce598257cccd2c
+```

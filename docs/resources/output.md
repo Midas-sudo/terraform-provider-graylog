@@ -15,7 +15,7 @@ Manages a Graylog output.
 ```terraform
 resource "graylog_output" "example" {
   title = "Terraform Output"
-  type  = "org.graylog2.outputs.LoggingOutput"
+  type  = "LoggingOutput"
   configuration_json = jsonencode({
     prefix = "terraform-output:"
   })
@@ -29,8 +29,18 @@ resource "graylog_output" "example" {
 
 - `configuration_json` (String) JSON object with plugin-specific output configuration.
 - `title` (String)
-- `type` (String)
+- `type` (String) Graylog output type: short name (e.g. `LoggingOutput`, `GelfOutput`) or full Java type (`org.graylog2.outputs....`). Short names expand on API calls and collapse in state when known.
 
 ### Read-Only
 
 - `id` (String) The ID of this resource.
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+terraform import graylog_output.example 69babedb10ce598257cccccd
+```

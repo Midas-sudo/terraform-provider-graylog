@@ -53,3 +53,13 @@ resource "graylog_user" "example" {
 - `id` (String) User ID.
 - `permissions` (Set of String) Effective permissions reported by Graylog.
 - `read_only` (Boolean) Whether user is read only.
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+terraform import graylog_user.example 69babedb10ce598257cccd24
+```

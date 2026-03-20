@@ -15,7 +15,7 @@ Manages a Graylog input. Inputs define how Graylog receives log messages (e.g. S
 ```terraform
 resource "graylog_input" "syslog_udp" {
   title  = "Syslog UDP"
-  type   = "org.graylog2.inputs.syslog.udp.SyslogUDPInput"
+  type   = "SyslogUDPInput"
   global = true
 
   configuration = jsonencode({
@@ -41,7 +41,7 @@ resource "graylog_input" "syslog_udp" {
 
 - `configuration` (String) Input configuration as a JSON string. The schema depends on the input `type`.
 - `title` (String) A descriptive name for the input.
-- `type` (String) The input type class name (e.g. `org.graylog2.inputs.syslog.udp.SyslogUDPInput`).
+- `type` (String) Graylog input type: use the short class name (e.g. `SyslogUDPInput`, `GELFUDPInput`) or the full Java type (`org.graylog2.inputs....`). Short names are expanded on create/update and collapsed in state when they match a known built-in.
 
 ### Optional
 
@@ -52,3 +52,13 @@ resource "graylog_input" "syslog_udp" {
 ### Read-Only
 
 - `id` (String) The input ID assigned by Graylog.
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+terraform import graylog_input.syslog_udp 69babedb10ce598257cccd13
+```

@@ -39,3 +39,13 @@ resource "graylog_role" "example" {
 
 - `id` (String) Role identifier (same as role name).
 - `read_only` (Boolean) Whether the role is managed by Graylog and cannot be changed.
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+terraform import graylog_role.example tf-demo-role
+```

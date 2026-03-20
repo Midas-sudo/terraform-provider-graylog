@@ -33,4 +33,4 @@ output "available_input_types" {
 Read-Only:
 
 - `name` (String) Human-readable name of the input type.
-- `type` (String) The input type class name.
+- `type` (String) Short alias when known, else full Java type.

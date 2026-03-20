@@ -1,0 +1,1 @@
+terraform import graylog_lookup_table.example 69babedb10ce598257cccd39

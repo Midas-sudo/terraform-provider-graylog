@@ -1,0 +1,1 @@
+terraform import graylog_event_definition.example 69babedb10ce598257cccd67

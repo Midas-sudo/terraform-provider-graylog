@@ -1,0 +1,1 @@
+terraform import graylog_grok_pattern.example 69babedb10ce598257ccccd4

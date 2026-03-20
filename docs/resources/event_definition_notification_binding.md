@@ -63,3 +63,13 @@ resource "graylog_event_definition_notification_binding" "example" {
 ### Read-Only
 
 - `id` (String) Binding ID (same as `event_definition_id`).
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+terraform import graylog_event_definition_notification_binding.example 69babedb10ce598257cccd67
+```

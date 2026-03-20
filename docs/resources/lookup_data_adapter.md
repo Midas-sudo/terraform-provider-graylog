@@ -52,3 +52,13 @@ resource "graylog_lookup_data_adapter" "example" {
 ### Read-Only
 
 - `id` (String) The ID of this resource.
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+terraform import graylog_lookup_data_adapter.example 69babedb10ce598257cccd08
+```

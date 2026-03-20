@@ -44,3 +44,13 @@ resource "graylog_pipeline_rule" "extract_fields" {
 - `created_at` (String) Timestamp when the rule was created.
 - `id` (String) The pipeline rule ID.
 - `modified_at` (String) Timestamp when the rule was last modified.
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+```shell
+terraform import graylog_pipeline_rule.extract_fields 69babedb10ce598257cccce0
+```
