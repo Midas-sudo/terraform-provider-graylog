@@ -130,3 +130,67 @@ func collapseRetentionStrategyConfigType(full string) string {
 	}
 	return full
 }
+
+func cloneStrategyMap(in map[string]interface{}) map[string]interface{} {
+	if in == nil {
+		return map[string]interface{}{}
+	}
+	out := make(map[string]interface{}, len(in))
+	for k, v := range in {
+		out[k] = v
+	}
+	return out
+}
+
+func omitNilStrategyValues(in map[string]interface{}) map[string]interface{} {
+	out := make(map[string]interface{}, len(in))
+	for k, v := range in {
+		if v == nil {
+			continue
+		}
+		out[k] = v
+	}
+	return out
+}
+
+// expandRotationStrategyMap expands short strategy config type names for API calls.
+func expandRotationStrategyMap(in map[string]interface{}) map[string]interface{} {
+	out := cloneStrategyMap(in)
+	if t, ok := out["type"].(string); ok {
+		out["type"] = expandRotationStrategyConfigType(t)
+	}
+	return out
+}
+
+// collapseRotationStrategyMap collapses known FQCNs for Terraform state.
+func collapseRotationStrategyMap(in map[string]interface{}) map[string]interface{} {
+	out := cloneStrategyMap(in)
+	if t, ok := out["type"].(string); ok {
+		out["type"] = collapseRotationStrategyConfigType(t)
+	}
+	return out
+}
+
+func expandRetentionStrategyMap(in map[string]interface{}) map[string]interface{} {
+	out := cloneStrategyMap(in)
+	if t, ok := out["type"].(string); ok {
+		out["type"] = expandRetentionStrategyConfigType(t)
+	}
+	return out
+}
+
+func collapseRetentionStrategyMap(in map[string]interface{}) map[string]interface{} {
+	out := cloneStrategyMap(in)
+	if t, ok := out["type"].(string); ok {
+		out["type"] = collapseRetentionStrategyConfigType(t)
+	}
+	return out
+}
+
+func strategyMapType(m map[string]interface{}) string {
+	if m == nil {
+		return ""
+	}
+	t, _ := m["type"].(string)
+	return t
+}

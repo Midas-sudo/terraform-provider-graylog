@@ -1,3 +1,31 @@
+## 0.11.1 (Aug 4, 2026)
+
+BUG FIXES:
+
+- `graylog_index_set`: pass through the full Graylog `rotation_strategy` and `retention_strategy` objects (Dynamic attributes) instead of only `type` / `max_number_of_indices`. This restores fields such as `rotation_period`, `max_docs_per_index`, `max_size`, and `rotate_empty_index_set` on create/update.
+
+BREAKING CHANGES:
+
+- `rotation_strategy` and `retention_strategy` changed from nested blocks to required Dynamic attributes (HCL objects). Existing state is migrated via schema version `0 → 1`.
+
+  Before:
+
+  ```hcl
+  rotation_strategy {
+    type = "TimeBasedRotationStrategyConfig"
+  }
+  ```
+
+  After:
+
+  ```hcl
+  rotation_strategy = {
+    type                   = "TimeBasedRotationStrategyConfig"
+    rotation_period        = "P1D"
+    rotate_empty_index_set = false
+  }
+  ```
+
 ## 0.11.0 (Aug 4, 2026)
 
 BREAKING CHANGES:

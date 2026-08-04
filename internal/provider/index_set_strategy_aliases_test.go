@@ -27,3 +27,22 @@ func TestExpandCollapseRetentionNestedTypes(t *testing.T) {
 		t.Fatalf("collapse config: got %q", got)
 	}
 }
+
+func TestExpandCollapseRotationStrategyMap(t *testing.T) {
+	in := map[string]interface{}{
+		"type":            "TimeBasedRotationStrategyConfig",
+		"rotation_period": "P1D",
+	}
+	expanded := expandRotationStrategyMap(in)
+	wantType := rotationStrategyPackage + "TimeBasedRotationStrategyConfig"
+	if expanded["type"] != wantType {
+		t.Fatalf("expand type: got %#v want %q", expanded["type"], wantType)
+	}
+	if expanded["rotation_period"] != "P1D" {
+		t.Fatalf("expand should keep rotation_period, got %#v", expanded["rotation_period"])
+	}
+	collapsed := collapseRotationStrategyMap(expanded)
+	if collapsed["type"] != "TimeBasedRotationStrategyConfig" {
+		t.Fatalf("collapse type: got %#v", collapsed["type"])
+	}
+}

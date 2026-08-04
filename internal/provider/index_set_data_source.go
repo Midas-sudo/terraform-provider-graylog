@@ -125,8 +125,8 @@ func mapIndexSetDataSource(src *client.IndexSet, dst *IndexSetDataSourceModel) {
 	dst.IndexAnalyzer = types.StringValue(src.IndexAnalyzer)
 	dst.RotationStrategyClass = types.StringValue(collapseRotationStrategyClass(src.RotationStrategyClass))
 	dst.RetentionStrategyClass = types.StringValue(collapseRetentionStrategyClass(src.RetentionStrategyClass))
-	dst.RotationStrategyType = types.StringValue(collapseRotationStrategyConfigType(src.RotationStrategy.Type))
-	dst.RetentionStrategyType = types.StringValue(collapseRetentionStrategyConfigType(src.RetentionStrategy.Type))
+	dst.RotationStrategyType = types.StringValue(collapseRotationStrategyConfigType(strategyMapType(src.RotationStrategy)))
+	dst.RetentionStrategyType = types.StringValue(collapseRetentionStrategyConfigType(strategyMapType(src.RetentionStrategy)))
 }
 
 // IndexSetsDataSource lists index sets.
