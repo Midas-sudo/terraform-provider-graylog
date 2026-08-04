@@ -3,12 +3,12 @@
 page_title: "graylog_lookup_caches Data Source - graylog"
 subcategory: ""
 description: |-
-  Lists Graylog lookup caches.
+  Lists Graylog lookup caches. Nested config is a JSON string (Plugin Framework limitation); use graylog_lookup_cache for a typed object.
 ---
 
 # graylog_lookup_caches (Data Source)
 
-Lists Graylog lookup caches.
+Lists Graylog lookup caches. Nested `config` is a JSON string (Plugin Framework limitation); use `graylog_lookup_cache` for a typed object.
 
 ## Example Usage
 
@@ -28,7 +28,7 @@ data "graylog_lookup_caches" "example" {}
 
 Read-Only:
 
-- `config_json` (String)
+- `config` (String) JSON-encoded configuration object.
 - `description` (String)
 - `id` (String)
 - `name` (String)

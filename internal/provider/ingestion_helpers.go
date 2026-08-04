@@ -4,6 +4,7 @@
 package provider
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -75,13 +76,25 @@ func marshalGrokPatternJSON(pattern *client.GrokPattern) string {
 	return string(b)
 }
 
-func mapOutputToResourceModel(output *client.Output, data *OutputResourceModel) {
+func mapOutputToResourceModel(ctx context.Context, output *client.Output, data *OutputResourceModel) diag.Diagnostics {
+	var diags diag.Diagnostics
 	data.ID = types.StringValue(output.ID)
 	data.Title = types.StringValue(output.Title)
 	data.Type = types.StringValue(collapseOutputType(output.Type))
+	if !data.Configuration.IsNull() && !data.Configuration.IsUnknown() {
+		return diags
+	}
+	cfg := output.Configuration
+	if cfg == nil {
+		cfg = map[string]interface{}{}
+	}
+	dyn, d := interfaceToDynamic(ctx, cfg)
+	diags.Append(d...)
+	data.Configuration = dyn
+	return diags
 }
 
-func mapExtractorToResourceModel(extractor *client.Extractor, data *ExtractorResourceModel) {
+func mapExtractorToResourceModel(ctx context.Context, extractor *client.Extractor, data *ExtractorResourceModel) diag.Diagnostics {
 	data.ID = types.StringValue(extractor.ID)
 	data.Title = types.StringValue(extractor.Title)
 	if extractor.ExtractorType != "" {
@@ -95,6 +108,28 @@ func mapExtractorToResourceModel(extractor *client.Extractor, data *ExtractorRes
 	data.ConditionType = types.StringValue(extractor.ConditionType)
 	data.ConditionValue = types.StringValue(extractor.ConditionValue)
 	data.Order = types.Int64Value(extractor.Order)
+
+	var diags diag.Diagnostics
+	if data.ExtractorConfig.IsNull() || data.ExtractorConfig.IsUnknown() {
+		cfg := extractor.ExtractorConfig
+		if cfg == nil {
+			cfg = map[string]interface{}{}
+		}
+		cfgDyn, d := interfaceToDynamic(ctx, cfg)
+		diags.Append(d...)
+		data.ExtractorConfig = cfgDyn
+	}
+
+	if data.Converters.IsNull() || data.Converters.IsUnknown() {
+		converters := make([]interface{}, 0, len(extractor.Converters))
+		for _, c := range extractor.Converters {
+			converters = append(converters, c)
+		}
+		convDyn, d := interfaceToDynamic(ctx, converters)
+		diags.Append(d...)
+		data.Converters = convDyn
+	}
+	return diags
 }
 
 func mapGrokPatternToResourceModel(pattern *client.GrokPattern, data *GrokPatternResourceModel) {
@@ -103,23 +138,22 @@ func mapGrokPatternToResourceModel(pattern *client.GrokPattern, data *GrokPatter
 	data.Pattern = types.StringValue(pattern.Pattern)
 }
 
-func mapOutputToDataSourceModel(output *client.Output, data *OutputDataSourceModel) {
+func mapOutputToDataSourceModel(ctx context.Context, output *client.Output, data *OutputDataSourceModel) diag.Diagnostics {
+	var diags diag.Diagnostics
 	data.ID = types.StringValue(output.ID)
 	data.Title = types.StringValue(output.Title)
 	data.Type = types.StringValue(collapseOutputType(output.Type))
-	if output.Configuration == nil {
-		data.ConfigurationJSON = types.StringValue("{}")
-		return
+	cfg := output.Configuration
+	if cfg == nil {
+		cfg = map[string]interface{}{}
 	}
-	b, err := json.Marshal(output.Configuration)
-	if err != nil {
-		data.ConfigurationJSON = types.StringValue("{}")
-		return
-	}
-	data.ConfigurationJSON = types.StringValue(string(b))
+	dyn, d := interfaceToDynamic(ctx, cfg)
+	diags.Append(d...)
+	data.Configuration = dyn
+	return diags
 }
 
-func mapExtractorToDataSourceModel(extractor *client.Extractor, data *ExtractorDataSourceModel) {
+func mapExtractorToDataSourceModel(ctx context.Context, extractor *client.Extractor, data *ExtractorDataSourceModel) diag.Diagnostics {
 	data.ID = types.StringValue(extractor.ID)
 	data.Title = types.StringValue(extractor.Title)
 	if extractor.ExtractorType != "" {
@@ -136,20 +170,37 @@ func mapExtractorToDataSourceModel(extractor *client.Extractor, data *ExtractorD
 
 	cfg := extractor.ExtractorConfig
 	if cfg == nil {
-		data.ExtractorConfigJSON = types.StringValue("{}")
-	} else if b, err := json.Marshal(cfg); err == nil {
-		data.ExtractorConfigJSON = types.StringValue(string(b))
-	} else {
-		data.ExtractorConfigJSON = types.StringValue("{}")
+		cfg = map[string]interface{}{}
 	}
-	converters := extractor.Converters
+	cfgDyn, diags := interfaceToDynamic(ctx, cfg)
+	data.ExtractorConfig = cfgDyn
+	if diags.HasError() {
+		return diags
+	}
+
+	converters := make([]interface{}, 0, len(extractor.Converters))
+	for _, c := range extractor.Converters {
+		converters = append(converters, c)
+	}
+	convDyn, d := interfaceToDynamic(ctx, converters)
+	diags.Append(d...)
+	data.Converters = convDyn
+	return diags
+}
+
+func extractorConfigJSONString(cfg map[string]interface{}) types.String {
+	return lookupConfigJSONString(cfg)
+}
+
+func extractorConvertersJSONString(converters []map[string]interface{}) types.String {
 	if converters == nil {
-		data.ConvertersJSON = types.StringValue("[]")
-	} else if b, err := json.Marshal(converters); err == nil {
-		data.ConvertersJSON = types.StringValue(string(b))
-	} else {
-		data.ConvertersJSON = types.StringValue("[]")
+		return types.StringValue("[]")
 	}
+	b, err := json.Marshal(converters)
+	if err != nil {
+		return types.StringValue("[]")
+	}
+	return types.StringValue(string(b))
 }
 
 func mapGrokPatternToDataSourceModel(pattern *client.GrokPattern, data *GrokPatternDataSourceModel) {

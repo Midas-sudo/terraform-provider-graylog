@@ -1,3 +1,43 @@
+## 0.11.0 (Aug 4, 2026)
+
+BREAKING CHANGES:
+
+- Plugin configuration attributes now use native HCL objects (`schema.DynamicAttribute`) instead of JSON strings. Existing state is migrated automatically via schema version upgraders.
+
+  Before:
+
+  ```hcl
+  configuration = jsonencode({
+    bind_address = "0.0.0.0"
+    port         = 1514
+  })
+  ```
+
+  After:
+
+  ```hcl
+  configuration = {
+    bind_address = "0.0.0.0"
+    port         = 1514
+  }
+  ```
+
+- Attribute renames (update Terraform configs; state upgrades rename keys):
+  - `graylog_output.configuration_json` → `configuration`
+  - `graylog_lookup_data_adapter.config_json` → `config`
+  - `graylog_lookup_cache.config_json` → `config`
+  - `graylog_event_notification.config_json` → `config`
+  - `graylog_extractor.extractor_config_json` / `converters_json` → `extractor_config` / `converters`
+  - `graylog_event_definition.config_json` / `field_spec_json` / `notifications_json` / `storage_json` → `config` / `field_spec` / `notifications` / `storage`
+  - `graylog_event_definition.notification_settings_json` → typed nested attribute `notification_settings` (`grace_period_ms`, `backlog_size`)
+
+- `graylog_input.configuration` type changes from JSON string to Dynamic object (name unchanged).
+
+NOTES:
+
+- List data sources keep nested config fields as JSON strings where the Plugin Framework forbids Dynamic inside collections; singular data sources mirror resource Dynamic types.
+- View/dashboard `*_json` and content-pack `entities_json` / `parameters_json` remain JSON strings.
+
 ## 0.10.1 (Mar 20, 2026)
 
 ENHANCEMENTS:

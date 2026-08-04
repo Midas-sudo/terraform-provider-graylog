@@ -148,13 +148,9 @@ func (c *Client) CreateStreamRule(ctx context.Context, streamID string, rule *St
 	return &result, nil
 }
 
-func (c *Client) UpdateStreamRule(ctx context.Context, streamID, ruleID string, rule *StreamRule) (*StreamRule, error) {
-	var result StreamRule
-	err := c.Put(ctx, fmt.Sprintf("/streams/%s/rules/%s", streamID, ruleID), rule, &result)
-	if err != nil {
-		return nil, err
-	}
-	return &result, nil
+func (c *Client) UpdateStreamRule(ctx context.Context, streamID, ruleID string, rule *StreamRule) error {
+	// Response body is typically {"streamrule_id":"..."} rather than the full rule.
+	return c.Put(ctx, fmt.Sprintf("/streams/%s/rules/%s", streamID, ruleID), rule, nil)
 }
 
 func (c *Client) DeleteStreamRule(ctx context.Context, streamID, ruleID string) error {

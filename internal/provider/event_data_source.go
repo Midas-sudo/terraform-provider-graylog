@@ -25,10 +25,17 @@ type EventNotificationDataSource struct {
 }
 
 type EventNotificationDataSourceModel struct {
+	ID          types.String  `tfsdk:"id"`
+	Title       types.String  `tfsdk:"title"`
+	Description types.String  `tfsdk:"description"`
+	Config      types.Dynamic `tfsdk:"config"`
+}
+
+type eventNotificationListItemModel struct {
 	ID          types.String `tfsdk:"id"`
 	Title       types.String `tfsdk:"title"`
 	Description types.String `tfsdk:"description"`
-	ConfigJSON  types.String `tfsdk:"config_json"`
+	Config      types.String `tfsdk:"config"`
 }
 
 func (d *EventNotificationDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -48,9 +55,9 @@ func (d *EventNotificationDataSource) Schema(_ context.Context, _ datasource.Sch
 			"description": schema.StringAttribute{
 				Computed: true,
 			},
-			"config_json": schema.StringAttribute{
+			"config": schema.DynamicAttribute{
 				Computed:            true,
-				MarkdownDescription: "JSON object with event notification configuration.",
+				MarkdownDescription: "Event notification configuration object.",
 			},
 		},
 	}
@@ -82,7 +89,7 @@ func (d *EventNotificationDataSource) Read(ctx context.Context, req datasource.R
 		return
 	}
 
-	mapEventNotificationToDataSourceModel(notification, &data)
+	resp.Diagnostics.Append(mapEventNotificationToDataSourceModel(ctx, notification, &data)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -97,7 +104,7 @@ type EventNotificationsDataSource struct {
 }
 
 type EventNotificationsDataSourceModel struct {
-	Notifications []EventNotificationDataSourceModel `tfsdk:"notifications"`
+	Notifications []eventNotificationListItemModel `tfsdk:"notifications"`
 }
 
 func (d *EventNotificationsDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -106,7 +113,8 @@ func (d *EventNotificationsDataSource) Metadata(_ context.Context, req datasourc
 
 func (d *EventNotificationsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Lists Graylog event notifications.",
+		MarkdownDescription: "Lists Graylog event notifications. Nested `config` is a JSON string " +
+			"(Plugin Framework limitation); use `graylog_event_notification` for a typed object.",
 		Attributes: map[string]schema.Attribute{
 			"notifications": schema.ListNestedAttribute{
 				Computed: true,
@@ -115,8 +123,9 @@ func (d *EventNotificationsDataSource) Schema(_ context.Context, _ datasource.Sc
 						"id":          schema.StringAttribute{Computed: true},
 						"title":       schema.StringAttribute{Computed: true},
 						"description": schema.StringAttribute{Computed: true},
-						"config_json": schema.StringAttribute{
-							Computed: true,
+						"config": schema.StringAttribute{
+							Computed:            true,
+							MarkdownDescription: "JSON-encoded configuration object.",
 						},
 					},
 				},
@@ -147,9 +156,12 @@ func (d *EventNotificationsDataSource) Read(ctx context.Context, _ datasource.Re
 
 	var data EventNotificationsDataSourceModel
 	for _, notification := range result.Notifications {
-		row := EventNotificationDataSourceModel{}
-		mapEventNotificationToDataSourceModel(&notification, &row)
-		data.Notifications = append(data.Notifications, row)
+		data.Notifications = append(data.Notifications, eventNotificationListItemModel{
+			ID:          types.StringValue(notification.ID),
+			Title:       types.StringValue(notification.Title),
+			Description: types.StringValue(notification.Description),
+			Config:      lookupConfigJSONString(notification.Config),
+		})
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -166,18 +178,34 @@ type EventDefinitionDataSource struct {
 }
 
 type EventDefinitionDataSourceModel struct {
-	ID                       types.String   `tfsdk:"id"`
-	Title                    types.String   `tfsdk:"title"`
-	Description              types.String   `tfsdk:"description"`
-	State                    types.String   `tfsdk:"state"`
-	Priority                 types.Int64    `tfsdk:"priority"`
-	Alert                    types.Bool     `tfsdk:"alert"`
-	ConfigJSON               types.String   `tfsdk:"config_json"`
-	FieldSpecJSON            types.String   `tfsdk:"field_spec_json"`
-	KeySpec                  []types.String `tfsdk:"key_spec"`
-	NotificationSettingsJSON types.String   `tfsdk:"notification_settings_json"`
-	NotificationsJSON        types.String   `tfsdk:"notifications_json"`
-	StorageJSON              types.String   `tfsdk:"storage_json"`
+	ID                   types.String                              `tfsdk:"id"`
+	Title                types.String                              `tfsdk:"title"`
+	Description          types.String                              `tfsdk:"description"`
+	State                types.String                              `tfsdk:"state"`
+	Priority             types.Int64                               `tfsdk:"priority"`
+	Alert                types.Bool                                `tfsdk:"alert"`
+	Config               types.Dynamic                             `tfsdk:"config"`
+	FieldSpec            types.Dynamic                             `tfsdk:"field_spec"`
+	KeySpec              []types.String                            `tfsdk:"key_spec"`
+	NotificationSettings *eventDefinitionNotificationSettingsModel `tfsdk:"notification_settings"`
+	Notifications        types.Dynamic                             `tfsdk:"notifications"`
+	Storage              types.Dynamic                             `tfsdk:"storage"`
+}
+
+// eventDefinitionListItemModel keeps Dynamic fields as JSON strings (framework limitation).
+type eventDefinitionListItemModel struct {
+	ID                   types.String                              `tfsdk:"id"`
+	Title                types.String                              `tfsdk:"title"`
+	Description          types.String                              `tfsdk:"description"`
+	State                types.String                              `tfsdk:"state"`
+	Priority             types.Int64                               `tfsdk:"priority"`
+	Alert                types.Bool                                `tfsdk:"alert"`
+	Config               types.String                              `tfsdk:"config"`
+	FieldSpec            types.String                              `tfsdk:"field_spec"`
+	KeySpec              []types.String                            `tfsdk:"key_spec"`
+	NotificationSettings *eventDefinitionNotificationSettingsModel `tfsdk:"notification_settings"`
+	Notifications        types.String                              `tfsdk:"notifications"`
+	Storage              types.String                              `tfsdk:"storage"`
 }
 
 func (d *EventDefinitionDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -200,14 +228,14 @@ func (d *EventDefinitionDataSource) Schema(_ context.Context, _ datasource.Schem
 			"state": schema.StringAttribute{
 				Computed: true,
 			},
-			"priority":                   schema.Int64Attribute{Computed: true},
-			"alert":                      schema.BoolAttribute{Computed: true},
-			"config_json":                schema.StringAttribute{Computed: true},
-			"field_spec_json":            schema.StringAttribute{Computed: true},
-			"key_spec":                   schema.ListAttribute{Computed: true, ElementType: types.StringType},
-			"notification_settings_json": schema.StringAttribute{Computed: true},
-			"notifications_json":         schema.StringAttribute{Computed: true},
-			"storage_json":               schema.StringAttribute{Computed: true},
+			"priority": schema.Int64Attribute{Computed: true},
+			"alert":    schema.BoolAttribute{Computed: true},
+			"config":   schema.DynamicAttribute{Computed: true},
+			"field_spec": schema.DynamicAttribute{Computed: true},
+			"key_spec":   schema.ListAttribute{Computed: true, ElementType: types.StringType},
+			"notification_settings": eventDefinitionNotificationSettingsSchema(false),
+			"notifications":         schema.DynamicAttribute{Computed: true},
+			"storage":               schema.DynamicAttribute{Computed: true},
 		},
 	}
 }
@@ -238,7 +266,7 @@ func (d *EventDefinitionDataSource) Read(ctx context.Context, req datasource.Rea
 		return
 	}
 
-	mapEventDefinitionToDataSourceModel(definition, &data)
+	resp.Diagnostics.Append(mapEventDefinitionToDataSourceModel(ctx, definition, &data)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -253,7 +281,7 @@ type EventDefinitionsDataSource struct {
 }
 
 type EventDefinitionsDataSourceModel struct {
-	EventDefinitions []EventDefinitionDataSourceModel `tfsdk:"event_definitions"`
+	EventDefinitions []eventDefinitionListItemModel `tfsdk:"event_definitions"`
 }
 
 func (d *EventDefinitionsDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -262,24 +290,25 @@ func (d *EventDefinitionsDataSource) Metadata(_ context.Context, req datasource.
 
 func (d *EventDefinitionsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Lists Graylog event definitions.",
+		MarkdownDescription: "Lists Graylog event definitions. Nested Dynamic fields are JSON strings " +
+			"(Plugin Framework limitation); use `graylog_event_definition` for typed objects.",
 		Attributes: map[string]schema.Attribute{
 			"event_definitions": schema.ListNestedAttribute{
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						"id":          schema.StringAttribute{Computed: true},
-						"title":       schema.StringAttribute{Computed: true},
-						"description": schema.StringAttribute{Computed: true},
-						"state":                      schema.StringAttribute{Computed: true},
-						"priority":                   schema.Int64Attribute{Computed: true},
-						"alert":                      schema.BoolAttribute{Computed: true},
-						"config_json":                schema.StringAttribute{Computed: true},
-						"field_spec_json":            schema.StringAttribute{Computed: true},
-						"key_spec":                   schema.ListAttribute{Computed: true, ElementType: types.StringType},
-						"notification_settings_json": schema.StringAttribute{Computed: true},
-						"notifications_json":         schema.StringAttribute{Computed: true},
-						"storage_json":               schema.StringAttribute{Computed: true},
+						"id":                    schema.StringAttribute{Computed: true},
+						"title":                 schema.StringAttribute{Computed: true},
+						"description":           schema.StringAttribute{Computed: true},
+						"state":                 schema.StringAttribute{Computed: true},
+						"priority":              schema.Int64Attribute{Computed: true},
+						"alert":                 schema.BoolAttribute{Computed: true},
+						"config":                schema.StringAttribute{Computed: true, MarkdownDescription: "JSON-encoded configuration object."},
+						"field_spec":            schema.StringAttribute{Computed: true, MarkdownDescription: "JSON-encoded field spec object."},
+						"key_spec":              schema.ListAttribute{Computed: true, ElementType: types.StringType},
+						"notification_settings": eventDefinitionNotificationSettingsSchema(false),
+						"notifications":         schema.StringAttribute{Computed: true, MarkdownDescription: "JSON-encoded notifications array."},
+						"storage":               schema.StringAttribute{Computed: true, MarkdownDescription: "JSON-encoded storage array."},
 					},
 				},
 			},
@@ -309,9 +338,7 @@ func (d *EventDefinitionsDataSource) Read(ctx context.Context, _ datasource.Read
 
 	var data EventDefinitionsDataSourceModel
 	for _, definition := range result.EventDefinitions {
-		row := EventDefinitionDataSourceModel{}
-		mapEventDefinitionToDataSourceModel(&definition, &row)
-		data.EventDefinitions = append(data.EventDefinitions, row)
+		data.EventDefinitions = append(data.EventDefinitions, mapEventDefinitionToListItemModel(&definition))
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

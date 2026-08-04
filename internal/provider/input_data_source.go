@@ -26,13 +26,13 @@ type InputDataSource struct {
 }
 
 type InputDataSourceModel struct {
-	ID            types.String `tfsdk:"id"`
-	Title         types.String `tfsdk:"title"`
-	Type          types.String `tfsdk:"type"`
-	Global        types.Bool   `tfsdk:"global"`
-	Node          types.String `tfsdk:"node"`
-	Configuration types.String `tfsdk:"configuration"`
-	CreatedAt     types.String `tfsdk:"created_at"`
+	ID            types.String  `tfsdk:"id"`
+	Title         types.String  `tfsdk:"title"`
+	Type          types.String  `tfsdk:"type"`
+	Global        types.Bool    `tfsdk:"global"`
+	Node          types.String  `tfsdk:"node"`
+	Configuration types.Dynamic `tfsdk:"configuration"`
+	CreatedAt     types.String  `tfsdk:"created_at"`
 }
 
 func (d *InputDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -63,9 +63,9 @@ func (d *InputDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, 
 				Computed:            true,
 				MarkdownDescription: "The node ID if the input is local.",
 			},
-			"configuration": schema.StringAttribute{
+			"configuration": schema.DynamicAttribute{
 				Computed:            true,
-				MarkdownDescription: "The input configuration as a JSON string.",
+				MarkdownDescription: "The input configuration object.",
 			},
 			"created_at": schema.StringAttribute{
 				Computed:            true,
@@ -112,8 +112,13 @@ func (d *InputDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 	}
 
 	if input.Attributes != nil {
-		configJSON, _ := json.Marshal(input.Attributes)
-		data.Configuration = types.StringValue(string(configJSON))
+		dyn, d := interfaceToDynamic(ctx, input.Attributes)
+		resp.Diagnostics.Append(d...)
+		data.Configuration = dyn
+	} else {
+		empty, d := interfaceToDynamic(ctx, map[string]interface{}{})
+		resp.Diagnostics.Append(d...)
+		data.Configuration = empty
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
@@ -130,8 +135,20 @@ type InputsDataSource struct {
 	client *client.Client
 }
 
+// inputListItemModel uses a JSON string for configuration because the Plugin
+// Framework does not allow DynamicAttribute inside nested collections.
+type inputListItemModel struct {
+	ID            types.String `tfsdk:"id"`
+	Title         types.String `tfsdk:"title"`
+	Type          types.String `tfsdk:"type"`
+	Global        types.Bool   `tfsdk:"global"`
+	Node          types.String `tfsdk:"node"`
+	Configuration types.String `tfsdk:"configuration"`
+	CreatedAt     types.String `tfsdk:"created_at"`
+}
+
 type InputsDataSourceModel struct {
-	Inputs []InputDataSourceModel `tfsdk:"inputs"`
+	Inputs []inputListItemModel `tfsdk:"inputs"`
 }
 
 func (d *InputsDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -140,7 +157,8 @@ func (d *InputsDataSource) Metadata(_ context.Context, req datasource.MetadataRe
 
 func (d *InputsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Lists all Graylog inputs.",
+		MarkdownDescription: "Lists all Graylog inputs. Nested `configuration` is a JSON string " +
+			"(Plugin Framework limitation); use `graylog_input` for a typed object.",
 		Attributes: map[string]schema.Attribute{
 			"inputs": schema.ListNestedAttribute{
 				Computed: true,
@@ -151,7 +169,7 @@ func (d *InputsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 						"type":          schema.StringAttribute{Computed: true},
 						"global":        schema.BoolAttribute{Computed: true},
 						"node":          schema.StringAttribute{Computed: true},
-						"configuration": schema.StringAttribute{Computed: true},
+						"configuration": schema.StringAttribute{Computed: true, MarkdownDescription: "JSON-encoded configuration object."},
 						"created_at":    schema.StringAttribute{Computed: true},
 					},
 				},
@@ -182,7 +200,7 @@ func (d *InputsDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 
 	var data InputsDataSourceModel
 	for _, input := range result.Inputs {
-		item := InputDataSourceModel{
+		item := inputListItemModel{
 			ID:        types.StringValue(input.ID),
 			Title:     types.StringValue(input.Title),
 			Type:      types.StringValue(collapseInputType(input.Type)),
@@ -195,8 +213,10 @@ func (d *InputsDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 			item.Node = types.StringNull()
 		}
 		if input.Attributes != nil {
-			configJSON, _ := json.Marshal(input.Attributes)
-			item.Configuration = types.StringValue(string(configJSON))
+			b, _ := json.Marshal(input.Attributes)
+			item.Configuration = types.StringValue(string(b))
+		} else {
+			item.Configuration = types.StringValue("{}")
 		}
 		data.Inputs = append(data.Inputs, item)
 	}
@@ -266,10 +286,10 @@ func (d *InputTypesDataSource) Read(ctx context.Context, req datasource.ReadRequ
 	}
 
 	var data InputTypesDataSourceModel
-	for typeName, typeInfo := range result.Types {
+	for typeName, humanName := range result.Types {
 		data.Types = append(data.Types, InputTypeModel{
 			Type: collapseInputType(typeName),
-			Name: typeInfo.Name,
+			Name: string(humanName),
 		})
 	}
 

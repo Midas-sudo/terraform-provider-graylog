@@ -177,14 +177,48 @@ go install
 
 ## Running Acceptance Tests
 
-Acceptance tests run against a real Graylog instance. Set the required environment variables and run:
+Acceptance tests run against a real Graylog instance and require `TF_ACC=1`.
+
+### Local Graylog (Docker)
+
+A local Graylog 7 + DataNode + MongoDB stack lives under `dev-workspace/` (gitignored personal workspace). Typical flow:
+
+```shell
+# Host prerequisite for DataNode
+# echo "vm.max_map_count=262144" | sudo tee -a /etc/sysctl.conf && sudo sysctl -p
+
+cd dev-workspace
+# compose sets GRAYLOG_SELFSIGNED_STARTUP=true to auto-complete DataNode preflight
+docker compose up -d
+# Wait until http://localhost:9000 accepts admin login, then return to the repo root.
+
+cd ..
+source scripts/local-acc-env.sh
+make install
+TF_ACC=1 make testacc
+```
+
+`scripts/local-acc-env.sh` exports `GRAYLOG_ENDPOINT`, `GRAYLOG_USERNAME`, `GRAYLOG_PASSWORD`, `TF_ACC`, and discovers `GRAYLOG_DEFAULT_INDEX_SET_ID` when the API is reachable.
+
+Optional fixture overrides (auto-discovered when unset where supported):
+
+| Variable | Purpose |
+|---|---|
+| `GRAYLOG_DEFAULT_INDEX_SET_ID` | Default index set for stream / share / index-set tests |
+| `GRAYLOG_VIEW_SEARCH_ID` | Search ID for view/dashboard tests |
+| `GRAYLOG_EVENT_STORAGE_STREAM_ID` | Storage stream for event definition tests |
+| `GRAYLOG_CONTENT_PACK_ID` / `GRAYLOG_CONTENT_PACK_REVISION` | Existing pack for installation tests |
+
+### Against any Graylog
 
 ```shell
 export GRAYLOG_ENDPOINT="https://graylog.example.com/api"
 export GRAYLOG_USERNAME="admin"
 export GRAYLOG_PASSWORD="secret"
+export TF_ACC=1
 
 go test -v -count=1 ./internal/provider/ -timeout 120m
+# or: make testacc
 ```
 
 ## Developing the Provider

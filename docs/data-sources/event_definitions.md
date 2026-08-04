@@ -3,12 +3,12 @@
 page_title: "graylog_event_definitions Data Source - graylog"
 subcategory: ""
 description: |-
-  Lists Graylog event definitions.
+  Lists Graylog event definitions. Nested Dynamic fields are JSON strings (Plugin Framework limitation); use graylog_event_definition for typed objects.
 ---
 
 # graylog_event_definitions (Data Source)
 
-Lists Graylog event definitions.
+Lists Graylog event definitions. Nested Dynamic fields are JSON strings (Plugin Framework limitation); use `graylog_event_definition` for typed objects.
 
 ## Example Usage
 
@@ -29,14 +29,22 @@ data "graylog_event_definitions" "example" {}
 Read-Only:
 
 - `alert` (Boolean)
-- `config_json` (String)
+- `config` (String) JSON-encoded configuration object.
 - `description` (String)
-- `field_spec_json` (String)
+- `field_spec` (String) JSON-encoded field spec object.
 - `id` (String)
 - `key_spec` (List of String)
-- `notification_settings_json` (String)
-- `notifications_json` (String)
+- `notification_settings` (Attributes) Notification timing settings. (see [below for nested schema](#nestedatt--event_definitions--notification_settings))
+- `notifications` (String) JSON-encoded notifications array.
 - `priority` (Number)
 - `state` (String)
-- `storage_json` (String)
+- `storage` (String) JSON-encoded storage array.
 - `title` (String)
+
+<a id="nestedatt--event_definitions--notification_settings"></a>
+### Nested Schema for `event_definitions.notification_settings`
+
+Optional:
+
+- `backlog_size` (Number)
+- `grace_period_ms` (Number)

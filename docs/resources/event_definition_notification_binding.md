@@ -16,10 +16,10 @@ Manages notification bindings for a Graylog event definition.
 resource "graylog_event_notification" "example" {
   title       = "Terraform Event Notification"
   description = "Managed by Terraform"
-  config_json = jsonencode({
+  config = {
     type = "http-notification-v1"
     url  = "https://example.org/graylog/events"
-  })
+  }
 }
 
 resource "graylog_event_definition" "example" {
@@ -27,22 +27,22 @@ resource "graylog_event_definition" "example" {
   description = "Managed by Terraform"
   priority    = 1
   alert       = false
-  config_json = jsonencode({
+  config = {
     type = "system-notifications-v1"
-  })
-  field_spec_json = jsonencode({})
-  key_spec        = []
-  notification_settings_json = jsonencode({
+  }
+  field_spec = {}
+  key_spec   = []
+  notification_settings = {
     grace_period_ms = 0
     backlog_size    = 0
-  })
-  notifications_json = jsonencode([])
-  storage_json = jsonencode([
+  }
+  notifications = []
+  storage = [
     {
       type    = "persist-to-streams-v1"
       streams = ["000000000000000000000003"]
     }
-  ])
+  ]
   state = "ENABLED"
 }
 

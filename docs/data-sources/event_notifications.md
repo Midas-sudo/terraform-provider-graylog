@@ -3,12 +3,12 @@
 page_title: "graylog_event_notifications Data Source - graylog"
 subcategory: ""
 description: |-
-  Lists Graylog event notifications.
+  Lists Graylog event notifications. Nested config is a JSON string (Plugin Framework limitation); use graylog_event_notification for a typed object.
 ---
 
 # graylog_event_notifications (Data Source)
 
-Lists Graylog event notifications.
+Lists Graylog event notifications. Nested `config` is a JSON string (Plugin Framework limitation); use `graylog_event_notification` for a typed object.
 
 ## Example Usage
 
@@ -28,7 +28,7 @@ data "graylog_event_notifications" "example" {}
 
 Read-Only:
 
-- `config_json` (String)
+- `config` (String) JSON-encoded configuration object.
 - `description` (String)
 - `id` (String)
 - `title` (String)

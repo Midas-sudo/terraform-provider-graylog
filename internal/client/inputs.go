@@ -47,12 +47,9 @@ type InputCreatedResponse struct {
 	ID string `json:"id"`
 }
 
-type InputType struct {
-	Name             string `json:"name"`
-	IsExclusive      bool   `json:"is_exclusive"`
-	RequestedConfig  map[string]interface{} `json:"requested_configuration"`
-	LinkToDocs       string `json:"link_to_docs"`
-}
+// InputType is the human-readable label for an input type class name.
+// Graylog 6+/7 `/system/inputs/types` returns types as map[className]humanName.
+type InputType string
 
 type InputTypesResponse struct {
 	Types map[string]InputType `json:"types"`

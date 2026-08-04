@@ -89,6 +89,32 @@ func TestAccContentPackInstallationResource(t *testing.T) {
 	})
 }
 
+func TestAccContentPackDataSources(t *testing.T) {
+	uuid := strings.ToLower(fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
+		time.Now().UnixNano()&0xffffffff,
+		(time.Now().UnixNano()>>32)&0xffff,
+		(time.Now().UnixNano()>>48)&0xffff,
+		(time.Now().UnixNano()>>12)&0xffff,
+		(time.Now().UnixNano()>>16)&0xffffffffffff,
+	))
+	name := "tf-content-pack-ds-" + uuid[:8]
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccContentPackDataSourcesConfig(uuid, 1, name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("data.graylog_content_pack.test", "content_pack_id", uuid),
+					resource.TestCheckResourceAttr("data.graylog_content_pack.test", "name", name),
+					resource.TestCheckResourceAttrSet("data.graylog_content_packs.test", "content_packs.0.content_pack_id"),
+				),
+			},
+		},
+	})
+}
+
 func testAccContentPackResourceConfig(contentPackID string, revision int64, name string) string {
 	return fmt.Sprintf(`
 resource "graylog_content_pack" "test" {
@@ -104,6 +130,19 @@ resource "graylog_content_pack" "test" {
   entities_json   = jsonencode([])
 }
 `, contentPackID, revision, name)
+}
+
+func testAccContentPackDataSourcesConfig(contentPackID string, revision int64, name string) string {
+	return fmt.Sprintf(`
+%s
+
+data "graylog_content_pack" "test" {
+  content_pack_id = graylog_content_pack.test.content_pack_id
+  revision        = graylog_content_pack.test.revision
+}
+
+data "graylog_content_packs" "test" {}
+`, testAccContentPackResourceConfig(contentPackID, revision, name))
 }
 
 func testAccContentPackInstallationResourceConfig(contentPackID string, revision int64, comment string) string {

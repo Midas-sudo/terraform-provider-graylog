@@ -16,9 +16,9 @@ Manages a Graylog output.
 resource "graylog_output" "example" {
   title = "Terraform Output"
   type  = "LoggingOutput"
-  configuration_json = jsonencode({
+  configuration = {
     prefix = "terraform-output:"
-  })
+  }
 }
 ```
 
@@ -27,7 +27,7 @@ resource "graylog_output" "example" {
 
 ### Required
 
-- `configuration_json` (String) JSON object with plugin-specific output configuration.
+- `configuration` (Dynamic) Plugin-specific output configuration object.
 - `title` (String)
 - `type` (String) Graylog output type: short name (e.g. `LoggingOutput`, `GelfOutput`) or full Java type (`org.graylog2.outputs....`). Short names expand on API calls and collapse in state when known.
 

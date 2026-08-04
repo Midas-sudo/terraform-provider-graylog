@@ -23,7 +23,7 @@ data "graylog_output" "example" {
 
 ### Read-Only
 
-- `configuration_json` (String)
+- `configuration` (Dynamic)
 - `id` (String) The ID of this resource.
 - `title` (String)
 - `type` (String)

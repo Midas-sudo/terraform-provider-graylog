@@ -4,6 +4,7 @@
 package provider
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -76,7 +77,7 @@ func marshalLookupTableJSON(table *client.LookupTable) string {
 	return string(b)
 }
 
-func mapLookupDataAdapterToResourceModel(adapter *client.LookupDataAdapter, data *LookupDataAdapterResourceModel) {
+func mapLookupDataAdapterToResourceModel(ctx context.Context, adapter *client.LookupDataAdapter, data *LookupDataAdapterResourceModel) diag.Diagnostics {
 	data.ID = types.StringValue(adapter.ID)
 	data.Title = types.StringValue(adapter.Title)
 	data.Name = types.StringValue(adapter.Name)
@@ -96,13 +97,33 @@ func mapLookupDataAdapterToResourceModel(adapter *client.LookupDataAdapter, data
 	} else {
 		data.CustomErrorTTLUnit = types.StringNull()
 	}
+	if !data.Config.IsNull() && !data.Config.IsUnknown() {
+		return nil
+	}
+	cfg := adapter.Config
+	if cfg == nil {
+		cfg = map[string]interface{}{}
+	}
+	dyn, diags := interfaceToDynamic(ctx, cfg)
+	data.Config = dyn
+	return diags
 }
 
-func mapLookupCacheToResourceModel(cache *client.LookupCache, data *LookupCacheResourceModel) {
+func mapLookupCacheToResourceModel(ctx context.Context, cache *client.LookupCache, data *LookupCacheResourceModel) diag.Diagnostics {
 	data.ID = types.StringValue(cache.ID)
 	data.Title = types.StringValue(cache.Title)
 	data.Name = types.StringValue(cache.Name)
 	data.Description = types.StringValue(cache.Description)
+	if !data.Config.IsNull() && !data.Config.IsUnknown() {
+		return nil
+	}
+	cfg := cache.Config
+	if cfg == nil {
+		cfg = map[string]interface{}{}
+	}
+	dyn, diags := interfaceToDynamic(ctx, cfg)
+	data.Config = dyn
+	return diags
 }
 
 func mapLookupTableToResourceModel(table *client.LookupTable, data *LookupTableResourceModel) {
@@ -118,20 +139,11 @@ func mapLookupTableToResourceModel(table *client.LookupTable, data *LookupTableR
 	data.DefaultMultiValueType = types.StringValue(table.DefaultMultiType)
 }
 
-func mapLookupDataAdapterToDataSourceModel(adapter *client.LookupDataAdapter, data *LookupDataAdapterDataSourceModel) {
+func mapLookupDataAdapterToDataSourceModel(ctx context.Context, adapter *client.LookupDataAdapter, data *LookupDataAdapterDataSourceModel) diag.Diagnostics {
 	data.ID = types.StringValue(adapter.ID)
 	data.Title = types.StringValue(adapter.Title)
 	data.Name = types.StringValue(adapter.Name)
 	data.Description = types.StringValue(adapter.Description)
-	if adapter.Config != nil {
-		if b, err := json.Marshal(adapter.Config); err == nil {
-			data.ConfigJSON = types.StringValue(string(b))
-		} else {
-			data.ConfigJSON = types.StringValue("{}")
-		}
-	} else {
-		data.ConfigJSON = types.StringValue("{}")
-	}
 	if adapter.CustomErrorTTLEnabled != nil {
 		data.CustomErrorTTLEnabled = types.BoolValue(*adapter.CustomErrorTTLEnabled)
 	} else {
@@ -147,22 +159,38 @@ func mapLookupDataAdapterToDataSourceModel(adapter *client.LookupDataAdapter, da
 	} else {
 		data.CustomErrorTTLUnit = types.StringNull()
 	}
+	cfg := adapter.Config
+	if cfg == nil {
+		cfg = map[string]interface{}{}
+	}
+	dyn, diags := interfaceToDynamic(ctx, cfg)
+	data.Config = dyn
+	return diags
 }
 
-func mapLookupCacheToDataSourceModel(cache *client.LookupCache, data *LookupCacheDataSourceModel) {
+func mapLookupCacheToDataSourceModel(ctx context.Context, cache *client.LookupCache, data *LookupCacheDataSourceModel) diag.Diagnostics {
 	data.ID = types.StringValue(cache.ID)
 	data.Title = types.StringValue(cache.Title)
 	data.Name = types.StringValue(cache.Name)
 	data.Description = types.StringValue(cache.Description)
-	if cache.Config != nil {
-		if b, err := json.Marshal(cache.Config); err == nil {
-			data.ConfigJSON = types.StringValue(string(b))
-		} else {
-			data.ConfigJSON = types.StringValue("{}")
-		}
-	} else {
-		data.ConfigJSON = types.StringValue("{}")
+	cfg := cache.Config
+	if cfg == nil {
+		cfg = map[string]interface{}{}
 	}
+	dyn, diags := interfaceToDynamic(ctx, cfg)
+	data.Config = dyn
+	return diags
+}
+
+func lookupConfigJSONString(cfg map[string]interface{}) types.String {
+	if cfg == nil {
+		return types.StringValue("{}")
+	}
+	b, err := json.Marshal(cfg)
+	if err != nil {
+		return types.StringValue("{}")
+	}
+	return types.StringValue(string(b))
 }
 
 func mapLookupTableToDataSourceModel(table *client.LookupTable, data *LookupTableDataSourceModel) {

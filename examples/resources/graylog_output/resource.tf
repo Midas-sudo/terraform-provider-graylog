@@ -1,7 +1,7 @@
 resource "graylog_output" "example" {
   title = "Terraform Output"
   type  = "LoggingOutput"
-  configuration_json = jsonencode({
+  configuration = {
     prefix = "terraform-output:"
-  })
+  }
 }

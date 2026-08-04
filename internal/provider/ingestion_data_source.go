@@ -5,6 +5,7 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -25,10 +26,10 @@ type OutputDataSource struct {
 }
 
 type OutputDataSourceModel struct {
-	ID                types.String `tfsdk:"id"`
-	Title             types.String `tfsdk:"title"`
-	Type              types.String `tfsdk:"type"`
-	ConfigurationJSON types.String `tfsdk:"configuration_json"`
+	ID            types.String  `tfsdk:"id"`
+	Title         types.String  `tfsdk:"title"`
+	Type          types.String  `tfsdk:"type"`
+	Configuration types.Dynamic `tfsdk:"configuration"`
 }
 
 func (d *OutputDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -39,10 +40,10 @@ func (d *OutputDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Retrieves a Graylog output by ID.",
 		Attributes: map[string]schema.Attribute{
-			"id":                 schema.StringAttribute{Required: true},
-			"title":              schema.StringAttribute{Computed: true},
-			"type":               schema.StringAttribute{Computed: true},
-			"configuration_json": schema.StringAttribute{Computed: true},
+			"id":            schema.StringAttribute{Required: true},
+			"title":         schema.StringAttribute{Computed: true},
+			"type":          schema.StringAttribute{Computed: true},
+			"configuration": schema.DynamicAttribute{Computed: true},
 		},
 	}
 }
@@ -72,7 +73,7 @@ func (d *OutputDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		return
 	}
 
-	mapOutputToDataSourceModel(output, &data)
+	resp.Diagnostics.Append(mapOutputToDataSourceModel(ctx, output, &data)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -86,8 +87,17 @@ type OutputsDataSource struct {
 	client *client.Client
 }
 
+// outputListItemModel uses a JSON string for configuration because the Plugin
+// Framework does not allow DynamicAttribute inside nested collections.
+type outputListItemModel struct {
+	ID            types.String `tfsdk:"id"`
+	Title         types.String `tfsdk:"title"`
+	Type          types.String `tfsdk:"type"`
+	Configuration types.String `tfsdk:"configuration"`
+}
+
 type OutputsDataSourceModel struct {
-	Outputs []OutputDataSourceModel `tfsdk:"outputs"`
+	Outputs []outputListItemModel `tfsdk:"outputs"`
 }
 
 func (d *OutputsDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -96,16 +106,17 @@ func (d *OutputsDataSource) Metadata(_ context.Context, req datasource.MetadataR
 
 func (d *OutputsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Lists Graylog outputs.",
+		MarkdownDescription: "Lists Graylog outputs. Nested `configuration` is a JSON string " +
+			"(Plugin Framework limitation); use `graylog_output` for a typed object.",
 		Attributes: map[string]schema.Attribute{
 			"outputs": schema.ListNestedAttribute{
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						"id":                 schema.StringAttribute{Computed: true},
-						"title":              schema.StringAttribute{Computed: true},
-						"type":               schema.StringAttribute{Computed: true},
-						"configuration_json": schema.StringAttribute{Computed: true},
+						"id":            schema.StringAttribute{Computed: true},
+						"title":         schema.StringAttribute{Computed: true},
+						"type":          schema.StringAttribute{Computed: true},
+						"configuration": schema.StringAttribute{Computed: true, MarkdownDescription: "JSON-encoded configuration object."},
 					},
 				},
 			},
@@ -134,8 +145,17 @@ func (d *OutputsDataSource) Read(ctx context.Context, _ datasource.ReadRequest, 
 
 	var data OutputsDataSourceModel
 	for _, output := range result.Outputs {
-		row := OutputDataSourceModel{}
-		mapOutputToDataSourceModel(&output, &row)
+		row := outputListItemModel{
+			ID:    types.StringValue(output.ID),
+			Title: types.StringValue(output.Title),
+			Type:  types.StringValue(collapseOutputType(output.Type)),
+		}
+		if output.Configuration != nil {
+			b, _ := json.Marshal(output.Configuration)
+			row.Configuration = types.StringValue(string(b))
+		} else {
+			row.Configuration = types.StringValue("{}")
+		}
 		data.Outputs = append(data.Outputs, row)
 	}
 
@@ -153,18 +173,33 @@ type ExtractorDataSource struct {
 }
 
 type ExtractorDataSourceModel struct {
-	ID                  types.String `tfsdk:"id"`
-	InputID             types.String `tfsdk:"input_id"`
-	Title               types.String `tfsdk:"title"`
-	ExtractorType       types.String `tfsdk:"extractor_type"`
-	CursorStrategy      types.String `tfsdk:"cursor_strategy"`
-	SourceField         types.String `tfsdk:"source_field"`
-	TargetField         types.String `tfsdk:"target_field"`
-	ConditionType       types.String `tfsdk:"condition_type"`
-	ConditionValue      types.String `tfsdk:"condition_value"`
-	Order               types.Int64  `tfsdk:"order"`
-	ExtractorConfigJSON types.String `tfsdk:"extractor_config_json"`
-	ConvertersJSON      types.String `tfsdk:"converters_json"`
+	ID              types.String  `tfsdk:"id"`
+	InputID         types.String  `tfsdk:"input_id"`
+	Title           types.String  `tfsdk:"title"`
+	ExtractorType   types.String  `tfsdk:"extractor_type"`
+	CursorStrategy  types.String  `tfsdk:"cursor_strategy"`
+	SourceField     types.String  `tfsdk:"source_field"`
+	TargetField     types.String  `tfsdk:"target_field"`
+	ConditionType   types.String  `tfsdk:"condition_type"`
+	ConditionValue  types.String  `tfsdk:"condition_value"`
+	Order           types.Int64   `tfsdk:"order"`
+	ExtractorConfig types.Dynamic `tfsdk:"extractor_config"`
+	Converters      types.Dynamic `tfsdk:"converters"`
+}
+
+type extractorListItemModel struct {
+	ID              types.String `tfsdk:"id"`
+	InputID         types.String `tfsdk:"input_id"`
+	Title           types.String `tfsdk:"title"`
+	ExtractorType   types.String `tfsdk:"extractor_type"`
+	CursorStrategy  types.String `tfsdk:"cursor_strategy"`
+	SourceField     types.String `tfsdk:"source_field"`
+	TargetField     types.String `tfsdk:"target_field"`
+	ConditionType   types.String `tfsdk:"condition_type"`
+	ConditionValue  types.String `tfsdk:"condition_value"`
+	Order           types.Int64  `tfsdk:"order"`
+	ExtractorConfig types.String `tfsdk:"extractor_config"`
+	Converters      types.String `tfsdk:"converters"`
 }
 
 func (d *ExtractorDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -185,8 +220,8 @@ func (d *ExtractorDataSource) Schema(_ context.Context, _ datasource.SchemaReque
 			"condition_type":        schema.StringAttribute{Computed: true},
 			"condition_value":       schema.StringAttribute{Computed: true},
 			"order":                 schema.Int64Attribute{Computed: true},
-			"extractor_config_json": schema.StringAttribute{Computed: true},
-			"converters_json":       schema.StringAttribute{Computed: true},
+			"extractor_config": schema.DynamicAttribute{Computed: true},
+			"converters":       schema.DynamicAttribute{Computed: true},
 		},
 	}
 }
@@ -216,7 +251,7 @@ func (d *ExtractorDataSource) Read(ctx context.Context, req datasource.ReadReque
 		return
 	}
 
-	mapExtractorToDataSourceModel(extractor, &data)
+	resp.Diagnostics.Append(mapExtractorToDataSourceModel(ctx, extractor, &data)...)
 	data.InputID = types.StringValue(data.InputID.ValueString())
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -232,8 +267,8 @@ type ExtractorsDataSource struct {
 }
 
 type ExtractorsDataSourceModel struct {
-	InputID    types.String               `tfsdk:"input_id"`
-	Extractors []ExtractorDataSourceModel `tfsdk:"extractors"`
+	InputID    types.String             `tfsdk:"input_id"`
+	Extractors []extractorListItemModel `tfsdk:"extractors"`
 }
 
 func (d *ExtractorsDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -242,25 +277,26 @@ func (d *ExtractorsDataSource) Metadata(_ context.Context, req datasource.Metada
 
 func (d *ExtractorsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Lists extractors for a specific Graylog input.",
+		MarkdownDescription: "Lists extractors for a specific Graylog input. Nested `extractor_config`/`converters` " +
+			"are JSON strings (Plugin Framework limitation); use `graylog_extractor` for typed objects.",
 		Attributes: map[string]schema.Attribute{
 			"input_id": schema.StringAttribute{Required: true},
 			"extractors": schema.ListNestedAttribute{
 				Computed: true,
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						"id":                    schema.StringAttribute{Computed: true},
-						"input_id":              schema.StringAttribute{Computed: true},
-						"title":                 schema.StringAttribute{Computed: true},
-						"extractor_type":        schema.StringAttribute{Computed: true},
-						"cursor_strategy":       schema.StringAttribute{Computed: true},
-						"source_field":          schema.StringAttribute{Computed: true},
-						"target_field":          schema.StringAttribute{Computed: true},
-						"condition_type":        schema.StringAttribute{Computed: true},
-						"condition_value":       schema.StringAttribute{Computed: true},
-						"order":                 schema.Int64Attribute{Computed: true},
-						"extractor_config_json": schema.StringAttribute{Computed: true},
-						"converters_json":       schema.StringAttribute{Computed: true},
+						"id":               schema.StringAttribute{Computed: true},
+						"input_id":         schema.StringAttribute{Computed: true},
+						"title":            schema.StringAttribute{Computed: true},
+						"extractor_type":   schema.StringAttribute{Computed: true},
+						"cursor_strategy":  schema.StringAttribute{Computed: true},
+						"source_field":     schema.StringAttribute{Computed: true},
+						"target_field":     schema.StringAttribute{Computed: true},
+						"condition_type":   schema.StringAttribute{Computed: true},
+						"condition_value":  schema.StringAttribute{Computed: true},
+						"order":            schema.Int64Attribute{Computed: true},
+						"extractor_config": schema.StringAttribute{Computed: true, MarkdownDescription: "JSON-encoded configuration object."},
+						"converters":       schema.StringAttribute{Computed: true, MarkdownDescription: "JSON-encoded converters array."},
 					},
 				},
 			},
@@ -293,14 +329,26 @@ func (d *ExtractorsDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		return
 	}
 
-	var rows []ExtractorDataSourceModel
+	var rows []extractorListItemModel
 	for _, extractor := range result.Extractors {
-		row := ExtractorDataSourceModel{
-			InputID: data.InputID,
+		extractorType := extractor.Type
+		if extractor.ExtractorType != "" {
+			extractorType = extractor.ExtractorType
 		}
-		mapExtractorToDataSourceModel(&extractor, &row)
-		row.InputID = data.InputID
-		rows = append(rows, row)
+		rows = append(rows, extractorListItemModel{
+			ID:              types.StringValue(extractor.ID),
+			InputID:         data.InputID,
+			Title:           types.StringValue(extractor.Title),
+			ExtractorType:   types.StringValue(extractorType),
+			CursorStrategy:  types.StringValue(extractor.CursorStrategy),
+			SourceField:     types.StringValue(extractor.SourceField),
+			TargetField:     types.StringValue(extractor.TargetField),
+			ConditionType:   types.StringValue(extractor.ConditionType),
+			ConditionValue:  types.StringValue(extractor.ConditionValue),
+			Order:           types.Int64Value(extractor.Order),
+			ExtractorConfig: extractorConfigJSONString(extractor.ExtractorConfig),
+			Converters:      extractorConvertersJSONString(extractor.Converters),
+		})
 	}
 	data.Extractors = rows
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

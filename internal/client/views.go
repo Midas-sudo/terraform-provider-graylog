@@ -39,8 +39,10 @@ func (c *Client) GetViews(ctx context.Context) (*ViewsResponse, error) {
 }
 
 func (c *Client) GetDashboards(ctx context.Context) (*ViewsResponse, error) {
+	// Graylog 7 `/dashboards` returns paginated `elements`, while `/views?type=DASHBOARD`
+	// returns the same shape as `/views` (`views` array). Prefer the views endpoint.
 	var result ViewsResponse
-	err := c.Get(ctx, "/dashboards", &result)
+	err := c.Get(ctx, "/views?type=DASHBOARD", &result)
 	if err != nil {
 		return nil, err
 	}

@@ -43,6 +43,26 @@ func TestAccRoleResource(t *testing.T) {
 	})
 }
 
+func TestAccRoleDataSources(t *testing.T) {
+	suffix := strings.ToLower(fmt.Sprintf("%x", time.Now().UnixNano()))
+	roleName := "tf-role-ds-" + suffix[:8]
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccRoleDataSourcesConfig(roleName),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("data.graylog_role.test", "name", roleName),
+					resource.TestCheckResourceAttrSet("data.graylog_role.test", "description"),
+					resource.TestCheckResourceAttrSet("data.graylog_roles.test", "roles.0.name"),
+				),
+			},
+		},
+	})
+}
+
 func testAccRoleResourceConfig(name, description string) string {
 	return fmt.Sprintf(`
 resource "graylog_role" "test" {
@@ -54,4 +74,16 @@ resource "graylog_role" "test" {
   ]
 }
 `, name, description)
+}
+
+func testAccRoleDataSourcesConfig(name string) string {
+	return fmt.Sprintf(`
+%s
+
+data "graylog_role" "test" {
+  name = graylog_role.test.name
+}
+
+data "graylog_roles" "test" {}
+`, testAccRoleResourceConfig(name, "Terraform acceptance role data source"))
 }

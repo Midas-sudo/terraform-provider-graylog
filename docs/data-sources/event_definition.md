@@ -24,14 +24,22 @@ data "graylog_event_definition" "example" {
 ### Read-Only
 
 - `alert` (Boolean)
-- `config_json` (String)
+- `config` (Dynamic)
 - `description` (String)
-- `field_spec_json` (String)
+- `field_spec` (Dynamic)
 - `id` (String) The ID of this resource.
 - `key_spec` (List of String)
-- `notification_settings_json` (String)
-- `notifications_json` (String)
+- `notification_settings` (Attributes) Notification timing settings. (see [below for nested schema](#nestedatt--notification_settings))
+- `notifications` (Dynamic)
 - `priority` (Number)
 - `state` (String)
-- `storage_json` (String)
+- `storage` (Dynamic)
 - `title` (String)
+
+<a id="nestedatt--notification_settings"></a>
+### Nested Schema for `notification_settings`
+
+Optional:
+
+- `backlog_size` (Number)
+- `grace_period_ms` (Number)

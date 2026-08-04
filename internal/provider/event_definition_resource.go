@@ -20,8 +20,9 @@ import (
 )
 
 var (
-	_ resource.Resource                = &EventDefinitionResource{}
-	_ resource.ResourceWithImportState = &EventDefinitionResource{}
+	_ resource.Resource                 = &EventDefinitionResource{}
+	_ resource.ResourceWithImportState  = &EventDefinitionResource{}
+	_ resource.ResourceWithUpgradeState = &EventDefinitionResource{}
 )
 
 func NewEventDefinitionResource() resource.Resource {
@@ -32,7 +33,27 @@ type EventDefinitionResource struct {
 	client *client.Client
 }
 
+type eventDefinitionNotificationSettingsModel struct {
+	GracePeriodMs types.Int64 `tfsdk:"grace_period_ms"`
+	BacklogSize   types.Int64 `tfsdk:"backlog_size"`
+}
+
 type EventDefinitionResourceModel struct {
+	ID                   types.String                              `tfsdk:"id"`
+	Title                types.String                              `tfsdk:"title"`
+	Description          types.String                              `tfsdk:"description"`
+	State                types.String                              `tfsdk:"state"`
+	Priority             types.Int64                               `tfsdk:"priority"`
+	Alert                types.Bool                                `tfsdk:"alert"`
+	Config               types.Dynamic                             `tfsdk:"config"`
+	FieldSpec            types.Dynamic                             `tfsdk:"field_spec"`
+	KeySpec              []types.String                            `tfsdk:"key_spec"`
+	NotificationSettings *eventDefinitionNotificationSettingsModel `tfsdk:"notification_settings"`
+	Notifications        types.Dynamic                             `tfsdk:"notifications"`
+	Storage              types.Dynamic                             `tfsdk:"storage"`
+}
+
+type eventDefinitionResourceModelV0 struct {
 	ID                       types.String   `tfsdk:"id"`
 	Title                    types.String   `tfsdk:"title"`
 	Description              types.String   `tfsdk:"description"`
@@ -51,8 +72,27 @@ func (r *EventDefinitionResource) Metadata(_ context.Context, req resource.Metad
 	resp.TypeName = req.ProviderTypeName + "_event_definition"
 }
 
+func eventDefinitionNotificationSettingsSchema(optional bool) schema.SingleNestedAttribute {
+	return schema.SingleNestedAttribute{
+		Optional:            optional,
+		Computed:            !optional,
+		MarkdownDescription: "Notification timing settings.",
+		Attributes: map[string]schema.Attribute{
+			"grace_period_ms": schema.Int64Attribute{
+				Optional: true,
+				Computed: true,
+			},
+			"backlog_size": schema.Int64Attribute{
+				Optional: true,
+				Computed: true,
+			},
+		},
+	}
+}
+
 func (r *EventDefinitionResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Version:             1,
 		MarkdownDescription: "Manages a Graylog event definition.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -81,27 +121,123 @@ func (r *EventDefinitionResource) Schema(_ context.Context, _ resource.SchemaReq
 				Required:            true,
 				MarkdownDescription: "Whether the definition should trigger alerts.",
 			},
-			"config_json": schema.StringAttribute{
+			"config": schema.DynamicAttribute{
 				Required:            true,
-				MarkdownDescription: "JSON object with event definition config.",
+				MarkdownDescription: "Event definition configuration object.",
 			},
-			"field_spec_json": schema.StringAttribute{
+			"field_spec": schema.DynamicAttribute{
 				Optional: true,
 			},
 			"key_spec": schema.ListAttribute{
 				Optional:    true,
 				ElementType: types.StringType,
 			},
-			"notification_settings_json": schema.StringAttribute{
-				Optional: true,
+			"notification_settings": eventDefinitionNotificationSettingsSchema(true),
+			"notifications": schema.DynamicAttribute{
+				Optional:            true,
+				MarkdownDescription: "List of notification binding objects.",
 			},
-			"notifications_json": schema.StringAttribute{
-				Optional: true,
-			},
-			"storage_json": schema.StringAttribute{
-				Optional: true,
+			"storage": schema.DynamicAttribute{
+				Optional:            true,
+				MarkdownDescription: "List of storage configuration objects.",
 			},
 		},
+	}
+}
+
+func (r *EventDefinitionResource) UpgradeState(ctx context.Context) map[int64]resource.StateUpgrader {
+	return map[int64]resource.StateUpgrader{
+		0: {
+			PriorSchema: &schema.Schema{
+				Attributes: map[string]schema.Attribute{
+					"id":                         schema.StringAttribute{Computed: true},
+					"title":                      schema.StringAttribute{Required: true},
+					"description":                schema.StringAttribute{Optional: true},
+					"state":                      schema.StringAttribute{Optional: true},
+					"priority":                   schema.Int64Attribute{Required: true},
+					"alert":                      schema.BoolAttribute{Required: true},
+					"config_json":                schema.StringAttribute{Required: true},
+					"field_spec_json":            schema.StringAttribute{Optional: true},
+					"key_spec":                   schema.ListAttribute{Optional: true, ElementType: types.StringType},
+					"notification_settings_json": schema.StringAttribute{Optional: true},
+					"notifications_json":         schema.StringAttribute{Optional: true},
+					"storage_json":               schema.StringAttribute{Optional: true},
+				},
+			},
+			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+				var prior eventDefinitionResourceModelV0
+				resp.Diagnostics.Append(req.State.Get(ctx, &prior)...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+
+				configDyn, err := upgradeJSONStringAttr(prior.ConfigJSON.ValueString())
+				if err != nil {
+					resp.Diagnostics.AddError("Failed to upgrade config", err.Error())
+					return
+				}
+				fieldSpecDyn, err := upgradeJSONStringAttr(prior.FieldSpecJSON.ValueString())
+				if err != nil {
+					resp.Diagnostics.AddError("Failed to upgrade field_spec", err.Error())
+					return
+				}
+				notificationsDyn, err := upgradeJSONStringAttr(prior.NotificationsJSON.ValueString())
+				if err != nil {
+					resp.Diagnostics.AddError("Failed to upgrade notifications", err.Error())
+					return
+				}
+				storageDyn, err := upgradeJSONStringAttr(prior.StorageJSON.ValueString())
+				if err != nil {
+					resp.Diagnostics.AddError("Failed to upgrade storage", err.Error())
+					return
+				}
+
+				var settings *eventDefinitionNotificationSettingsModel
+				if !prior.NotificationSettingsJSON.IsNull() && prior.NotificationSettingsJSON.ValueString() != "" {
+					var raw map[string]interface{}
+					if err := json.Unmarshal([]byte(prior.NotificationSettingsJSON.ValueString()), &raw); err != nil {
+						resp.Diagnostics.AddError("Failed to upgrade notification_settings", err.Error())
+						return
+					}
+					settings = &eventDefinitionNotificationSettingsModel{
+						GracePeriodMs: types.Int64Value(jsonNumberAsInt64(raw["grace_period_ms"])),
+						BacklogSize:   types.Int64Value(jsonNumberAsInt64(raw["backlog_size"])),
+					}
+				}
+
+				upgraded := EventDefinitionResourceModel{
+					ID:                   prior.ID,
+					Title:                prior.Title,
+					Description:          prior.Description,
+					State:                prior.State,
+					Priority:             prior.Priority,
+					Alert:                prior.Alert,
+					Config:               configDyn,
+					FieldSpec:            fieldSpecDyn,
+					KeySpec:              prior.KeySpec,
+					NotificationSettings: settings,
+					Notifications:        notificationsDyn,
+					Storage:              storageDyn,
+				}
+				resp.Diagnostics.Append(resp.State.Set(ctx, &upgraded)...)
+			},
+		},
+	}
+}
+
+func jsonNumberAsInt64(v interface{}) int64 {
+	switch n := v.(type) {
+	case float64:
+		return int64(n)
+	case int64:
+		return n
+	case int:
+		return int64(n)
+	case json.Number:
+		i, _ := n.Int64()
+		return i
+	default:
+		return 0
 	}
 }
 
@@ -124,8 +260,13 @@ func (r *EventDefinitionResource) Create(ctx context.Context, req resource.Creat
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	plannedConfig := data.Config
+	plannedFieldSpec := data.FieldSpec
+	plannedNotifications := data.Notifications
+	plannedStorage := data.Storage
+	plannedSettings := data.NotificationSettings
 
-	definitionReq, diags := eventDefinitionFromModel(&data)
+	definitionReq, diags := eventDefinitionFromModel(ctx, &data)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -137,8 +278,12 @@ func (r *EventDefinitionResource) Create(ctx context.Context, req resource.Creat
 		return
 	}
 
-	mapEventDefinitionToResourceModel(created, &data)
-	populateEventDefinitionJSONFields(created, &data)
+	resp.Diagnostics.Append(mapEventDefinitionToResourceModel(ctx, created, &data)...)
+	data.Config = plannedConfig
+	data.FieldSpec = plannedFieldSpec
+	data.Notifications = plannedNotifications
+	data.Storage = plannedStorage
+	data.NotificationSettings = plannedSettings
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -159,8 +304,7 @@ func (r *EventDefinitionResource) Read(ctx context.Context, req resource.ReadReq
 		return
 	}
 
-	mapEventDefinitionToResourceModel(current, &data)
-	populateEventDefinitionJSONFields(current, &data)
+	resp.Diagnostics.Append(mapEventDefinitionToResourceModel(ctx, current, &data)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -172,8 +316,13 @@ func (r *EventDefinitionResource) Update(ctx context.Context, req resource.Updat
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	plannedConfig := data.Config
+	plannedFieldSpec := data.FieldSpec
+	plannedNotifications := data.Notifications
+	plannedStorage := data.Storage
+	plannedSettings := data.NotificationSettings
 
-	definitionReq, diags := eventDefinitionFromModel(&data)
+	definitionReq, diags := eventDefinitionFromModel(ctx, &data)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -185,8 +334,12 @@ func (r *EventDefinitionResource) Update(ctx context.Context, req resource.Updat
 		return
 	}
 
-	mapEventDefinitionToResourceModel(updated, &data)
-	populateEventDefinitionJSONFields(updated, &data)
+	resp.Diagnostics.Append(mapEventDefinitionToResourceModel(ctx, updated, &data)...)
+	data.Config = plannedConfig
+	data.FieldSpec = plannedFieldSpec
+	data.Notifications = plannedNotifications
+	data.Storage = plannedStorage
+	data.NotificationSettings = plannedSettings
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -207,7 +360,7 @@ func (r *EventDefinitionResource) ImportState(ctx context.Context, req resource.
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func eventDefinitionFromModel(data *EventDefinitionResourceModel) (*client.EventDefinition, diag.Diagnostics) {
+func eventDefinitionFromModel(ctx context.Context, data *EventDefinitionResourceModel) (*client.EventDefinition, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
 	def := &client.EventDefinition{
@@ -222,96 +375,61 @@ func eventDefinitionFromModel(data *EventDefinitionResourceModel) (*client.Event
 		def.State = data.State.ValueString()
 	}
 
-	if err := json.Unmarshal([]byte(data.ConfigJSON.ValueString()), &def.Config); err != nil {
-		diags.AddError("Invalid config_json", fmt.Sprintf("Failed to parse config_json: %v", err))
+	cfg, d := dynamicToMap(ctx, data.Config)
+	diags.Append(d...)
+	if diags.HasError() {
 		return nil, diags
 	}
-	if !data.FieldSpecJSON.IsNull() && !data.FieldSpecJSON.IsUnknown() && data.FieldSpecJSON.ValueString() != "" {
-		if err := json.Unmarshal([]byte(data.FieldSpecJSON.ValueString()), &def.FieldSpec); err != nil {
-			diags.AddError("Invalid field_spec_json", fmt.Sprintf("Failed to parse field_spec_json: %v", err))
+	def.Config = cfg
+
+	if !data.FieldSpec.IsNull() && !data.FieldSpec.IsUnknown() {
+		fs, d := dynamicToMap(ctx, data.FieldSpec)
+		diags.Append(d...)
+		if diags.HasError() {
 			return nil, diags
 		}
+		def.FieldSpec = fs
 	}
+
 	if len(data.KeySpec) > 0 {
 		def.KeySpec = make([]string, 0, len(data.KeySpec))
 		for _, v := range data.KeySpec {
 			def.KeySpec = append(def.KeySpec, v.ValueString())
 		}
 	}
-	if !data.NotificationSettingsJSON.IsNull() && !data.NotificationSettingsJSON.IsUnknown() && data.NotificationSettingsJSON.ValueString() != "" {
-		if err := json.Unmarshal([]byte(data.NotificationSettingsJSON.ValueString()), &def.NotificationSettings); err != nil {
-			diags.AddError("Invalid notification_settings_json", fmt.Sprintf("Failed to parse notification_settings_json: %v", err))
+
+	if data.NotificationSettings != nil {
+		def.NotificationSettings = map[string]interface{}{
+			"grace_period_ms": data.NotificationSettings.GracePeriodMs.ValueInt64(),
+			"backlog_size":    data.NotificationSettings.BacklogSize.ValueInt64(),
+		}
+	}
+
+	if !data.Notifications.IsNull() && !data.Notifications.IsUnknown() {
+		raw, d := dynamicToSlice(ctx, data.Notifications)
+		diags.Append(d...)
+		if diags.HasError() {
+			return nil, diags
+		}
+		b, err := json.Marshal(raw)
+		if err != nil {
+			diags.AddError("Invalid notifications", err.Error())
+			return nil, diags
+		}
+		if err := json.Unmarshal(b, &def.Notifications); err != nil {
+			diags.AddError("Invalid notifications", err.Error())
 			return nil, diags
 		}
 	}
-	if !data.NotificationsJSON.IsNull() && !data.NotificationsJSON.IsUnknown() && data.NotificationsJSON.ValueString() != "" {
-		if err := json.Unmarshal([]byte(data.NotificationsJSON.ValueString()), &def.Notifications); err != nil {
-			diags.AddError("Invalid notifications_json", fmt.Sprintf("Failed to parse notifications_json: %v", err))
+
+	if !data.Storage.IsNull() && !data.Storage.IsUnknown() {
+		storage, d := dynamicToSliceOfMaps(ctx, data.Storage)
+		diags.Append(d...)
+		if diags.HasError() {
 			return nil, diags
 		}
-	}
-	if !data.StorageJSON.IsNull() && !data.StorageJSON.IsUnknown() && data.StorageJSON.ValueString() != "" {
-		if err := json.Unmarshal([]byte(data.StorageJSON.ValueString()), &def.Storage); err != nil {
-			diags.AddError("Invalid storage_json", fmt.Sprintf("Failed to parse storage_json: %v", err))
-			return nil, diags
-		}
+		def.Storage = storage
 	}
 
 	return def, diags
-}
-
-func populateEventDefinitionJSONFields(def *client.EventDefinition, data *EventDefinitionResourceModel) {
-	if data.ConfigJSON.IsNull() || data.ConfigJSON.IsUnknown() || data.ConfigJSON.ValueString() == "" {
-		if def.Config == nil {
-			data.ConfigJSON = types.StringValue("{}")
-		} else if b, err := json.Marshal(def.Config); err == nil {
-			data.ConfigJSON = types.StringValue(string(b))
-		}
-	}
-
-	if data.FieldSpecJSON.IsNull() || data.FieldSpecJSON.IsUnknown() || data.FieldSpecJSON.ValueString() == "" {
-		if def.FieldSpec != nil {
-			if b, err := json.Marshal(def.FieldSpec); err == nil {
-				data.FieldSpecJSON = types.StringValue(string(b))
-			}
-		} else {
-			data.FieldSpecJSON = types.StringNull()
-		}
-	}
-
-	if len(data.KeySpec) == 0 && def.KeySpec != nil {
-		keys := make([]types.String, 0, len(def.KeySpec))
-		for _, k := range def.KeySpec {
-			keys = append(keys, types.StringValue(k))
-		}
-		data.KeySpec = keys
-	}
-
-	if data.NotificationSettingsJSON.IsNull() || data.NotificationSettingsJSON.IsUnknown() || data.NotificationSettingsJSON.ValueString() == "" {
-		if def.NotificationSettings != nil {
-			if b, err := json.Marshal(def.NotificationSettings); err == nil {
-				data.NotificationSettingsJSON = types.StringValue(string(b))
-			}
-		} else {
-			data.NotificationSettingsJSON = types.StringNull()
-		}
-	}
-	if data.NotificationsJSON.IsNull() || data.NotificationsJSON.IsUnknown() || data.NotificationsJSON.ValueString() == "" {
-		if def.Notifications != nil {
-			if b, err := json.Marshal(def.Notifications); err == nil {
-				data.NotificationsJSON = types.StringValue(string(b))
-			}
-		} else {
-			data.NotificationsJSON = types.StringNull()
-		}
-	}
-	if data.StorageJSON.IsNull() || data.StorageJSON.IsUnknown() || data.StorageJSON.ValueString() == "" {
-		if def.Storage != nil {
-			if b, err := json.Marshal(def.Storage); err == nil {
-				data.StorageJSON = types.StringValue(string(b))
-			}
-		} else {
-			data.StorageJSON = types.StringNull()
-		}
-	}
 }

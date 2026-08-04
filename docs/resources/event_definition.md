@@ -19,22 +19,22 @@ resource "graylog_event_definition" "example" {
   priority    = 1
   alert       = false
 
-  config_json = jsonencode({
+  config = {
     type = "system-notifications-v1"
-  })
-  field_spec_json = jsonencode({})
-  key_spec        = []
-  notification_settings_json = jsonencode({
+  }
+  field_spec = {}
+  key_spec   = []
+  notification_settings = {
     grace_period_ms = 0
     backlog_size    = 0
-  })
-  notifications_json = jsonencode([])
-  storage_json = jsonencode([
+  }
+  notifications = []
+  storage = [
     {
       type    = "persist-to-streams-v1"
       streams = ["000000000000000000000003"]
     }
-  ])
+  ]
   state = "ENABLED"
 }
 ```
@@ -45,23 +45,31 @@ resource "graylog_event_definition" "example" {
 ### Required
 
 - `alert` (Boolean) Whether the definition should trigger alerts.
-- `config_json` (String) JSON object with event definition config.
+- `config` (Dynamic) Event definition configuration object.
 - `priority` (Number) Event priority.
 - `title` (String) Event definition title.
 
 ### Optional
 
 - `description` (String) Event definition description.
-- `field_spec_json` (String)
+- `field_spec` (Dynamic)
 - `key_spec` (List of String)
-- `notification_settings_json` (String)
-- `notifications_json` (String)
+- `notification_settings` (Attributes) Notification timing settings. (see [below for nested schema](#nestedatt--notification_settings))
+- `notifications` (Dynamic) List of notification binding objects.
 - `state` (String) Event definition state reported by Graylog (`ENABLED`/`DISABLED`).
-- `storage_json` (String)
+- `storage` (Dynamic) List of storage configuration objects.
 
 ### Read-Only
 
 - `id` (String) The ID of this resource.
+
+<a id="nestedatt--notification_settings"></a>
+### Nested Schema for `notification_settings`
+
+Optional:
+
+- `backlog_size` (Number)
+- `grace_period_ms` (Number)
 
 ## Import
 
