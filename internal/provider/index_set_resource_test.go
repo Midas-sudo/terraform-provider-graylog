@@ -28,6 +28,9 @@ func TestAccIndexSetResource(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("graylog_index_set.test", "index_prefix", prefix),
 					resource.TestCheckResourceAttr("graylog_index_set.test", "title", "Terraform index set"),
+					resource.TestCheckResourceAttr("graylog_index_set.test", "rotation_strategy.type", "MessageCountRotationStrategyConfig"),
+					resource.TestCheckResourceAttr("graylog_index_set.test", "rotation_strategy.max_docs_per_index", "20000000"),
+					resource.TestCheckResourceAttr("graylog_index_set.test", "retention_strategy.max_number_of_indices", "20"),
 					resource.TestCheckResourceAttrSet("graylog_index_set.test", "id"),
 				),
 			},
@@ -39,12 +42,72 @@ func TestAccIndexSetResource(t *testing.T) {
 					"set_as_default",
 					"sync_template",
 					"is_default",
+					// Dynamic strategy objects may include API-normalized number encodings.
+					"rotation_strategy",
+					"retention_strategy",
 				},
 			},
 			{
 				Config: testAccIndexSetResourceConfig(prefix, "Terraform index set updated"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("graylog_index_set.test", "title", "Terraform index set updated"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccIndexSetResourceTimeBasedRotation(t *testing.T) {
+	testAccRequireDefaultIndexSetID(t)
+
+	suffix := strings.ToLower(fmt.Sprintf("%x", time.Now().UnixNano()))
+	prefix := "tftbr" + suffix[:8]
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccIndexSetResourceTimeBasedConfig(prefix, "Terraform time-based index set"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("graylog_index_set.test", "rotation_strategy_class", "TimeBasedRotationStrategy"),
+					resource.TestCheckResourceAttr("graylog_index_set.test", "rotation_strategy.type", "TimeBasedRotationStrategyConfig"),
+					resource.TestCheckResourceAttr("graylog_index_set.test", "rotation_strategy.rotation_period", "P1D"),
+					resource.TestCheckResourceAttr("graylog_index_set.test", "rotation_strategy.rotate_empty_index_set", "false"),
+				),
+			},
+			{
+				Config: testAccIndexSetResourceTimeBasedConfigUpdated(prefix, "Terraform time-based index set"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("graylog_index_set.test", "rotation_strategy.rotation_period", "P7D"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccIndexSetResourceSizeBasedRotation(t *testing.T) {
+	testAccRequireDefaultIndexSetID(t)
+
+	suffix := strings.ToLower(fmt.Sprintf("%x", time.Now().UnixNano()))
+	prefix := "tfsbr" + suffix[:8]
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccIndexSetResourceSizeBasedConfig(prefix, "Terraform size-based index set"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("graylog_index_set.test", "rotation_strategy_class", "SizeBasedRotationStrategy"),
+					resource.TestCheckResourceAttr("graylog_index_set.test", "rotation_strategy.type", "SizeBasedRotationStrategyConfig"),
+					resource.TestCheckResourceAttr("graylog_index_set.test", "rotation_strategy.max_size", "1073741824"),
+				),
+			},
+			{
+				Config: testAccIndexSetResourceSizeBasedConfigUpdated(prefix, "Terraform size-based index set"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("graylog_index_set.test", "rotation_strategy.max_size", "2147483648"),
 				),
 			},
 		},
@@ -100,6 +163,8 @@ func TestAccIndexSetResourceDataTiering(t *testing.T) {
 					"set_as_default",
 					"sync_template",
 					"is_default",
+					"rotation_strategy",
+					"retention_strategy",
 				},
 			},
 		},
@@ -130,11 +195,130 @@ resource "graylog_index_set" "test" {
   set_as_default           = false
   sync_template            = true
 
-  rotation_strategy {
-    type = "MessageCountRotationStrategyConfig"
+  rotation_strategy = {
+    type               = "MessageCountRotationStrategyConfig"
+    max_docs_per_index = 20000000
   }
 
-  retention_strategy {
+  retention_strategy = {
+    type                  = "DeletionRetentionStrategyConfig"
+    max_number_of_indices = 20
+  }
+}
+`, title, indexPrefix)
+}
+
+func testAccIndexSetResourceTimeBasedConfig(indexPrefix, title string) string {
+	return fmt.Sprintf(`
+resource "graylog_index_set" "test" {
+  title                    = %[1]q
+  description              = "Managed by acceptance test (time-based rotation)"
+  index_prefix             = %[2]q
+  shards                   = 1
+  replicas                 = 0
+  writable                 = true
+  index_analyzer           = "standard"
+  use_legacy_rotation      = true
+  rotation_strategy_class  = "TimeBasedRotationStrategy"
+  retention_strategy_class = "DeletionRetentionStrategy"
+  set_as_default           = false
+  sync_template            = true
+
+  rotation_strategy = {
+    type                   = "TimeBasedRotationStrategyConfig"
+    rotation_period        = "P1D"
+    rotate_empty_index_set = false
+  }
+
+  retention_strategy = {
+    type                  = "DeletionRetentionStrategyConfig"
+    max_number_of_indices = 30
+  }
+}
+`, title, indexPrefix)
+}
+
+func testAccIndexSetResourceTimeBasedConfigUpdated(indexPrefix, title string) string {
+	return fmt.Sprintf(`
+resource "graylog_index_set" "test" {
+  title                    = %[1]q
+  description              = "Managed by acceptance test (time-based rotation)"
+  index_prefix             = %[2]q
+  shards                   = 1
+  replicas                 = 0
+  writable                 = true
+  index_analyzer           = "standard"
+  use_legacy_rotation      = true
+  rotation_strategy_class  = "TimeBasedRotationStrategy"
+  retention_strategy_class = "DeletionRetentionStrategy"
+  set_as_default           = false
+  sync_template            = true
+
+  rotation_strategy = {
+    type                   = "TimeBasedRotationStrategyConfig"
+    rotation_period        = "P7D"
+    rotate_empty_index_set = false
+  }
+
+  retention_strategy = {
+    type                  = "DeletionRetentionStrategyConfig"
+    max_number_of_indices = 30
+  }
+}
+`, title, indexPrefix)
+}
+
+func testAccIndexSetResourceSizeBasedConfig(indexPrefix, title string) string {
+	return fmt.Sprintf(`
+resource "graylog_index_set" "test" {
+  title                    = %[1]q
+  description              = "Managed by acceptance test (size-based rotation)"
+  index_prefix             = %[2]q
+  shards                   = 1
+  replicas                 = 0
+  writable                 = true
+  index_analyzer           = "standard"
+  use_legacy_rotation      = true
+  rotation_strategy_class  = "SizeBasedRotationStrategy"
+  retention_strategy_class = "DeletionRetentionStrategy"
+  set_as_default           = false
+  sync_template            = true
+
+  rotation_strategy = {
+    type     = "SizeBasedRotationStrategyConfig"
+    max_size = 1073741824
+  }
+
+  retention_strategy = {
+    type                  = "DeletionRetentionStrategyConfig"
+    max_number_of_indices = 20
+  }
+}
+`, title, indexPrefix)
+}
+
+func testAccIndexSetResourceSizeBasedConfigUpdated(indexPrefix, title string) string {
+	return fmt.Sprintf(`
+resource "graylog_index_set" "test" {
+  title                    = %[1]q
+  description              = "Managed by acceptance test (size-based rotation)"
+  index_prefix             = %[2]q
+  shards                   = 1
+  replicas                 = 0
+  writable                 = true
+  index_analyzer           = "standard"
+  use_legacy_rotation      = true
+  rotation_strategy_class  = "SizeBasedRotationStrategy"
+  retention_strategy_class = "DeletionRetentionStrategy"
+  set_as_default           = false
+  sync_template            = true
+
+  rotation_strategy = {
+    type     = "SizeBasedRotationStrategyConfig"
+    max_size = 2147483648
+  }
+
+  retention_strategy = {
     type                  = "DeletionRetentionStrategyConfig"
     max_number_of_indices = 20
   }
@@ -172,11 +356,11 @@ resource "graylog_index_set" "test" {
   set_as_default           = false
   sync_template            = true
 
-  rotation_strategy {
+  rotation_strategy = {
     type = "TimeBasedSizeOptimizingStrategyConfig"
   }
 
-  retention_strategy {
+  retention_strategy = {
     type                  = "DeletionRetentionStrategyConfig"
     max_number_of_indices = 20
   }

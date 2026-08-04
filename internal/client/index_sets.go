@@ -8,15 +8,6 @@ import (
 	"fmt"
 )
 
-type RotationStrategyConfig struct {
-	Type string `json:"type"`
-}
-
-type RetentionStrategyConfig struct {
-	Type               string `json:"type"`
-	MaxNumberOfIndices int64  `json:"max_number_of_indices,omitempty"`
-}
-
 type DataTieringConfig struct {
 	Type             string `json:"type"`
 	IndexLifetimeMin string `json:"index_lifetime_min,omitempty"`
@@ -24,25 +15,25 @@ type DataTieringConfig struct {
 }
 
 type IndexSet struct {
-	ID                              string                  `json:"id,omitempty"`
-	Title                           string                  `json:"title,omitempty"`
-	Description                     string                  `json:"description,omitempty"`
-	IndexPrefix                     string                  `json:"index_prefix,omitempty"`
-	IndexOptimizationMaxNumSegments int64                   `json:"index_optimization_max_num_segments,omitempty"`
-	IndexOptimizationDisabled       bool                    `json:"index_optimization_disabled"`
-	FieldTypeRefreshInterval        int64                   `json:"field_type_refresh_interval,omitempty"`
-	Shards                          int64                   `json:"shards,omitempty"`
-	Replicas                        int64                   `json:"replicas"`
-	Writable                        bool                    `json:"writable,omitempty"`
-	Default                         bool                    `json:"default,omitempty"`
-	IndexAnalyzer                   string                  `json:"index_analyzer,omitempty"`
-	UseLegacyRotation               bool                    `json:"use_legacy_rotation"`
-	IndexTemplateType               string                  `json:"index_template_type,omitempty"`
-	RotationStrategyClass           string                  `json:"rotation_strategy_class,omitempty"`
-	RotationStrategy                RotationStrategyConfig  `json:"rotation_strategy"`
-	RetentionStrategyClass          string                  `json:"retention_strategy_class,omitempty"`
-	RetentionStrategy               RetentionStrategyConfig `json:"retention_strategy"`
-	DataTiering                     *DataTieringConfig      `json:"data_tiering,omitempty"`
+	ID                              string                 `json:"id,omitempty"`
+	Title                           string                 `json:"title,omitempty"`
+	Description                     string                 `json:"description,omitempty"`
+	IndexPrefix                     string                 `json:"index_prefix,omitempty"`
+	IndexOptimizationMaxNumSegments int64                  `json:"index_optimization_max_num_segments,omitempty"`
+	IndexOptimizationDisabled       bool                   `json:"index_optimization_disabled"`
+	FieldTypeRefreshInterval        int64                  `json:"field_type_refresh_interval,omitempty"`
+	Shards                          int64                  `json:"shards,omitempty"`
+	Replicas                        int64                  `json:"replicas"`
+	Writable                        bool                   `json:"writable,omitempty"`
+	Default                         bool                   `json:"default,omitempty"`
+	IndexAnalyzer                   string                 `json:"index_analyzer,omitempty"`
+	UseLegacyRotation               bool                   `json:"use_legacy_rotation"`
+	IndexTemplateType               string                 `json:"index_template_type,omitempty"`
+	RotationStrategyClass           string                 `json:"rotation_strategy_class,omitempty"`
+	RotationStrategy                map[string]interface{} `json:"rotation_strategy"`
+	RetentionStrategyClass          string                 `json:"retention_strategy_class,omitempty"`
+	RetentionStrategy               map[string]interface{} `json:"retention_strategy"`
+	DataTiering                     *DataTieringConfig     `json:"data_tiering,omitempty"`
 }
 
 type IndexSetsResponse struct {

@@ -21,15 +21,66 @@ resource "graylog_index_set" "example" {
   replicas                 = 0
   writable                 = true
   index_analyzer           = "standard"
+  use_legacy_rotation      = true
+  rotation_strategy_class  = "TimeBasedRotationStrategy"
+  retention_strategy_class = "DeletionRetentionStrategy"
+
+  rotation_strategy = {
+    type                   = "TimeBasedRotationStrategyConfig"
+    rotation_period        = "P1D"
+    rotate_empty_index_set = false
+  }
+
+  retention_strategy = {
+    type                  = "DeletionRetentionStrategyConfig"
+    max_number_of_indices = 20
+  }
+
+  sync_template = true
+}
+
+resource "graylog_index_set" "size_based" {
+  title                    = "Size-Based Index Set"
+  description              = "Rotate when index reaches ~1 GiB"
+  index_prefix             = "sized"
+  shards                   = 1
+  replicas                 = 0
+  writable                 = true
+  index_analyzer           = "standard"
+  use_legacy_rotation      = true
+  rotation_strategy_class  = "SizeBasedRotationStrategy"
+  retention_strategy_class = "DeletionRetentionStrategy"
+
+  rotation_strategy = {
+    type     = "SizeBasedRotationStrategyConfig"
+    max_size = 1073741824
+  }
+
+  retention_strategy = {
+    type                  = "DeletionRetentionStrategyConfig"
+    max_number_of_indices = 20
+  }
+
+  sync_template = true
+}
+
+resource "graylog_index_set" "size_optimizing" {
+  title                    = "Optimized Index Set"
+  description              = "Time-based size optimizing with data tiering"
+  index_prefix             = "opt"
+  shards                   = 1
+  replicas                 = 0
+  writable                 = true
+  index_analyzer           = "standard"
   use_legacy_rotation      = false
   rotation_strategy_class  = "TimeBasedSizeOptimizingStrategy"
   retention_strategy_class = "DeletionRetentionStrategy"
 
-  rotation_strategy {
+  rotation_strategy = {
     type = "TimeBasedSizeOptimizingStrategyConfig"
   }
 
-  retention_strategy {
+  retention_strategy = {
     type                  = "DeletionRetentionStrategyConfig"
     max_number_of_indices = 20
   }
@@ -50,7 +101,9 @@ resource "graylog_index_set" "example" {
 ### Required
 
 - `index_prefix` (String) Index prefix used for created indices.
+- `retention_strategy` (Dynamic) Retention strategy configuration object. Must include `type` (short name or FQCN). Strategy-specific keys are passed through (e.g. `max_number_of_indices`).
 - `retention_strategy_class` (String) Retention strategy class. Use a short name such as `DeletionRetentionStrategy` or `NoopRetentionStrategy`, or the full Graylog Java class (e.g. `org.graylog2.indexer.retention.strategies.DeletionRetentionStrategy`).
+- `rotation_strategy` (Dynamic) Rotation strategy configuration object. Must include `type` (short name or FQCN). Strategy-specific keys are passed through to Graylog (e.g. `rotation_period`, `max_docs_per_index`, `max_size`, `rotate_empty_index_set`).
 - `rotation_strategy_class` (String) Rotation strategy class. Use a short name such as `MessageCountRotationStrategy`, `SizeBasedRotationStrategy`, `TimeBasedRotationStrategy`, or `TimeBasedSizeOptimizingStrategy`, or the full Graylog Java class (e.g. `org.graylog2.indexer.rotation.strategies.MessageCountRotationStrategy`).
 - `title` (String) Index set display name.
 
@@ -63,8 +116,6 @@ resource "graylog_index_set" "example" {
 - `index_optimization_disabled` (Boolean) Disables index optimization when true.
 - `index_optimization_max_num_segments` (Number) Maximum segments after index optimization. Defaults to 1.
 - `replicas` (Number) Number of replicas per index. Defaults to 0.
-- `retention_strategy` (Block, Optional) Retention strategy settings. (see [below for nested schema](#nestedblock--retention_strategy))
-- `rotation_strategy` (Block, Optional) Rotation strategy settings. (see [below for nested schema](#nestedblock--rotation_strategy))
 - `set_as_default` (Boolean) If true, sets this index set as Graylog default after create/update.
 - `shards` (Number) Number of shards per index. Defaults to 1.
 - `sync_template` (Boolean) If true, syncs index template after create/update.
@@ -84,26 +135,6 @@ Optional:
 - `index_lifetime_max` (String) Maximum index lifetime as ISO-8601 duration (for example `P40D`).
 - `index_lifetime_min` (String) Minimum index lifetime as ISO-8601 duration (for example `P30D`).
 - `type` (String) Data tiering mode type (for example `hot_only`).
-
-
-<a id="nestedblock--retention_strategy"></a>
-### Nested Schema for `retention_strategy`
-
-Required:
-
-- `type` (String) Retention strategy config type. Use a short name such as `DeletionRetentionStrategyConfig` or `NoopRetentionStrategyConfig`, or the full Graylog config class name.
-
-Optional:
-
-- `max_number_of_indices` (Number) Maximum number of indices to retain (strategy dependent).
-
-
-<a id="nestedblock--rotation_strategy"></a>
-### Nested Schema for `rotation_strategy`
-
-Required:
-
-- `type` (String) Rotation strategy config type. Use a short name such as `MessageCountRotationStrategyConfig` matching the rotation strategy, or the full Graylog config class name.
 
 ## Import
 
