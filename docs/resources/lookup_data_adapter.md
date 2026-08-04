@@ -18,7 +18,7 @@ resource "graylog_lookup_data_adapter" "example" {
   name        = "terraform-lookup-adapter"
   description = "Managed by Terraform"
 
-  config_json = jsonencode({
+  config = {
     type                    = "csvfile"
     path                    = "/tmp/lookup-table.csv"
     separator               = ","
@@ -29,7 +29,7 @@ resource "graylog_lookup_data_adapter" "example" {
     case_insensitive_lookup = false
     multi_value_lookup      = false
     cidr_lookup             = false
-  })
+  }
 }
 ```
 
@@ -38,7 +38,7 @@ resource "graylog_lookup_data_adapter" "example" {
 
 ### Required
 
-- `config_json` (String) JSON object with adapter-specific configuration.
+- `config` (Dynamic) Adapter-specific configuration object.
 - `name` (String)
 - `title` (String)
 

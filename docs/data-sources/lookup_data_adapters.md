@@ -3,12 +3,12 @@
 page_title: "graylog_lookup_data_adapters Data Source - graylog"
 subcategory: ""
 description: |-
-  Lists Graylog lookup data adapters.
+  Lists Graylog lookup data adapters. Nested config is a JSON string (Plugin Framework limitation); use graylog_lookup_data_adapter for a typed object.
 ---
 
 # graylog_lookup_data_adapters (Data Source)
 
-Lists Graylog lookup data adapters.
+Lists Graylog lookup data adapters. Nested `config` is a JSON string (Plugin Framework limitation); use `graylog_lookup_data_adapter` for a typed object.
 
 ## Example Usage
 
@@ -28,7 +28,7 @@ data "graylog_lookup_data_adapters" "example" {}
 
 Read-Only:
 
-- `config_json` (String)
+- `config` (String) JSON-encoded configuration object.
 - `custom_error_ttl` (Number)
 - `custom_error_ttl_enabled` (Boolean)
 - `custom_error_ttl_unit` (String)

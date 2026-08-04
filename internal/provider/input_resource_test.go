@@ -58,6 +58,24 @@ func TestAccInputResource(t *testing.T) {
 	})
 }
 
+func TestAccInputDataSources(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccInputDataSourcesConfig("TF Acc Input DS"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrPair("data.graylog_input.test", "id", "graylog_input.test", "id"),
+					resource.TestCheckResourceAttr("data.graylog_input.test", "title", "TF Acc Input DS"),
+					resource.TestCheckResourceAttrSet("data.graylog_inputs.test", "inputs.0.id"),
+					resource.TestCheckResourceAttrSet("data.graylog_input_types.test", "types.0.type"),
+				),
+			},
+		},
+	})
+}
+
 func testAccInputResourceConfig(title string) string {
 	return fmt.Sprintf(`
 resource "graylog_input" "test" {
@@ -65,11 +83,25 @@ resource "graylog_input" "test" {
   type   = "SyslogUDPInput"
   global = true
 
-  configuration = jsonencode({
-    bind_address   = "0.0.0.0"
-    port           = 15140
+  configuration = {
+    bind_address     = "0.0.0.0"
+    port             = 15140
     recv_buffer_size = 262144
-  })
+  }
 }
 `, title)
+}
+
+func testAccInputDataSourcesConfig(title string) string {
+	return fmt.Sprintf(`
+%s
+
+data "graylog_input" "test" {
+  id = graylog_input.test.id
+}
+
+data "graylog_inputs" "test" {}
+
+data "graylog_input_types" "test" {}
+`, testAccInputResourceConfig(title))
 }

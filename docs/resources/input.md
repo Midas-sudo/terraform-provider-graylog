@@ -18,7 +18,7 @@ resource "graylog_input" "syslog_udp" {
   type   = "SyslogUDPInput"
   global = true
 
-  configuration = jsonencode({
+  configuration = {
     bind_address           = "0.0.0.0"
     port                   = 1514
     recv_buffer_size       = 262144
@@ -26,7 +26,7 @@ resource "graylog_input" "syslog_udp" {
     store_full_message     = false
     force_rdns             = false
     expand_structured_data = false
-  })
+  }
 
   static_fields = {
     from_terraform = "true"
@@ -39,7 +39,7 @@ resource "graylog_input" "syslog_udp" {
 
 ### Required
 
-- `configuration` (String) Input configuration as a JSON string. The schema depends on the input `type`.
+- `configuration` (Dynamic) Input configuration object. Keys depend on the input `type` (e.g. `bind_address`, `port`, `recv_buffer_size`).
 - `title` (String) A descriptive name for the input.
 - `type` (String) Graylog input type: use the short class name (e.g. `SyslogUDPInput`, `GELFUDPInput`) or the full Java type (`org.graylog2.inputs....`). Short names are expanded on create/update and collapsed in state when they match a known built-in.
 

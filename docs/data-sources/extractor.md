@@ -30,9 +30,9 @@ data "graylog_extractor" "example" {
 
 - `condition_type` (String)
 - `condition_value` (String)
-- `converters_json` (String)
+- `converters` (Dynamic)
 - `cursor_strategy` (String)
-- `extractor_config_json` (String)
+- `extractor_config` (Dynamic)
 - `extractor_type` (String)
 - `id` (String) The ID of this resource.
 - `order` (Number)

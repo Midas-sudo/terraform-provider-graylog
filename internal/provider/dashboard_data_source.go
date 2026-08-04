@@ -152,6 +152,9 @@ func (d *DashboardsDataSource) Read(ctx context.Context, _ datasource.ReadReques
 
 	var data DashboardsDataSourceModel
 	for _, v := range result.Views {
+		if v.Type != "" && v.Type != "DASHBOARD" {
+			continue
+		}
 		row := DashboardDataSourceModel{}
 		mapDashboardDataSource(&v, &row)
 		data.Dashboards = append(data.Dashboards, row)

@@ -5,7 +5,6 @@ package provider
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -20,8 +19,9 @@ import (
 )
 
 var (
-	_ resource.Resource                = &LookupDataAdapterResource{}
-	_ resource.ResourceWithImportState = &LookupDataAdapterResource{}
+	_ resource.Resource                 = &LookupDataAdapterResource{}
+	_ resource.ResourceWithImportState  = &LookupDataAdapterResource{}
+	_ resource.ResourceWithUpgradeState = &LookupDataAdapterResource{}
 )
 
 func NewLookupDataAdapterResource() resource.Resource {
@@ -33,6 +33,17 @@ type LookupDataAdapterResource struct {
 }
 
 type LookupDataAdapterResourceModel struct {
+	ID                    types.String  `tfsdk:"id"`
+	Title                 types.String  `tfsdk:"title"`
+	Name                  types.String  `tfsdk:"name"`
+	Description           types.String  `tfsdk:"description"`
+	Config                types.Dynamic `tfsdk:"config"`
+	CustomErrorTTLEnabled types.Bool    `tfsdk:"custom_error_ttl_enabled"`
+	CustomErrorTTL        types.Int64   `tfsdk:"custom_error_ttl"`
+	CustomErrorTTLUnit    types.String  `tfsdk:"custom_error_ttl_unit"`
+}
+
+type lookupDataAdapterResourceModelV0 struct {
 	ID                    types.String `tfsdk:"id"`
 	Title                 types.String `tfsdk:"title"`
 	Name                  types.String `tfsdk:"name"`
@@ -49,6 +60,7 @@ func (r *LookupDataAdapterResource) Metadata(_ context.Context, req resource.Met
 
 func (r *LookupDataAdapterResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Version:             1,
 		MarkdownDescription: "Manages a Graylog lookup data adapter.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -60,9 +72,9 @@ func (r *LookupDataAdapterResource) Schema(_ context.Context, _ resource.SchemaR
 			"title":       schema.StringAttribute{Required: true},
 			"name":        schema.StringAttribute{Required: true},
 			"description": schema.StringAttribute{Optional: true},
-			"config_json": schema.StringAttribute{
+			"config": schema.DynamicAttribute{
 				Required:            true,
-				MarkdownDescription: "JSON object with adapter-specific configuration.",
+				MarkdownDescription: "Adapter-specific configuration object.",
 			},
 			"custom_error_ttl_enabled": schema.BoolAttribute{
 				Optional: true,
@@ -72,6 +84,48 @@ func (r *LookupDataAdapterResource) Schema(_ context.Context, _ resource.SchemaR
 			},
 			"custom_error_ttl_unit": schema.StringAttribute{
 				Optional: true,
+			},
+		},
+	}
+}
+
+func (r *LookupDataAdapterResource) UpgradeState(ctx context.Context) map[int64]resource.StateUpgrader {
+	return map[int64]resource.StateUpgrader{
+		0: {
+			PriorSchema: &schema.Schema{
+				Attributes: map[string]schema.Attribute{
+					"id":                       schema.StringAttribute{Computed: true},
+					"title":                    schema.StringAttribute{Required: true},
+					"name":                     schema.StringAttribute{Required: true},
+					"description":              schema.StringAttribute{Optional: true},
+					"config_json":              schema.StringAttribute{Required: true},
+					"custom_error_ttl_enabled": schema.BoolAttribute{Optional: true},
+					"custom_error_ttl":         schema.Int64Attribute{Optional: true},
+					"custom_error_ttl_unit":    schema.StringAttribute{Optional: true},
+				},
+			},
+			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+				var prior lookupDataAdapterResourceModelV0
+				resp.Diagnostics.Append(req.State.Get(ctx, &prior)...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				dyn, err := upgradeJSONStringAttr(prior.ConfigJSON.ValueString())
+				if err != nil {
+					resp.Diagnostics.AddError("Failed to upgrade lookup data adapter config", err.Error())
+					return
+				}
+				upgraded := LookupDataAdapterResourceModel{
+					ID:                    prior.ID,
+					Title:                 prior.Title,
+					Name:                  prior.Name,
+					Description:           prior.Description,
+					Config:                dyn,
+					CustomErrorTTLEnabled: prior.CustomErrorTTLEnabled,
+					CustomErrorTTL:        prior.CustomErrorTTL,
+					CustomErrorTTLUnit:    prior.CustomErrorTTLUnit,
+				}
+				resp.Diagnostics.Append(resp.State.Set(ctx, &upgraded)...)
 			},
 		},
 	}
@@ -96,7 +150,7 @@ func (r *LookupDataAdapterResource) Create(ctx context.Context, req resource.Cre
 		return
 	}
 
-	adapterReq, diags := lookupDataAdapterFromModel(&data)
+	adapterReq, diags := lookupDataAdapterFromModel(ctx, &data)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -108,8 +162,7 @@ func (r *LookupDataAdapterResource) Create(ctx context.Context, req resource.Cre
 		return
 	}
 
-	mapLookupDataAdapterToResourceModel(created, &data)
-	populateLookupDataAdapterConfig(created, &data)
+	resp.Diagnostics.Append(mapLookupDataAdapterToResourceModel(ctx, created, &data)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -130,34 +183,30 @@ func (r *LookupDataAdapterResource) Read(ctx context.Context, req resource.ReadR
 		return
 	}
 
-	mapLookupDataAdapterToResourceModel(current, &data)
-	populateLookupDataAdapterConfig(current, &data)
+	resp.Diagnostics.Append(mapLookupDataAdapterToResourceModel(ctx, current, &data)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (r *LookupDataAdapterResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var data LookupDataAdapterResourceModel
-	var state LookupDataAdapterResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
-	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	adapterReq, diags := lookupDataAdapterFromModel(&data)
+	adapterReq, diags := lookupDataAdapterFromModel(ctx, &data)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	updated, err := r.client.UpdateLookupDataAdapter(ctx, state.ID.ValueString(), adapterReq)
+	updated, err := r.client.UpdateLookupDataAdapter(ctx, data.ID.ValueString(), adapterReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to update lookup data adapter", err.Error())
 		return
 	}
 
-	mapLookupDataAdapterToResourceModel(updated, &data)
-	populateLookupDataAdapterConfig(updated, &data)
+	resp.Diagnostics.Append(mapLookupDataAdapterToResourceModel(ctx, updated, &data)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -177,12 +226,9 @@ func (r *LookupDataAdapterResource) ImportState(ctx context.Context, req resourc
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func lookupDataAdapterFromModel(data *LookupDataAdapterResourceModel) (*client.LookupDataAdapter, diag.Diagnostics) {
-	var diags diag.Diagnostics
-	var cfg map[string]interface{}
-
-	if err := json.Unmarshal([]byte(data.ConfigJSON.ValueString()), &cfg); err != nil {
-		diags.AddError("Invalid config_json", fmt.Sprintf("Failed to parse config_json: %v", err))
+func lookupDataAdapterFromModel(ctx context.Context, data *LookupDataAdapterResourceModel) (*client.LookupDataAdapter, diag.Diagnostics) {
+	cfg, diags := dynamicToMap(ctx, data.Config)
+	if diags.HasError() {
 		return nil, diags
 	}
 
@@ -207,17 +253,4 @@ func lookupDataAdapterFromModel(data *LookupDataAdapterResourceModel) (*client.L
 		adapter.CustomErrorTTLUnit = &v
 	}
 	return adapter, diags
-}
-
-func populateLookupDataAdapterConfig(adapter *client.LookupDataAdapter, data *LookupDataAdapterResourceModel) {
-	if adapter.Config == nil {
-		data.ConfigJSON = types.StringValue("{}")
-	} else {
-		b, err := json.Marshal(adapter.Config)
-		if err != nil {
-			data.ConfigJSON = types.StringValue("{}")
-		} else {
-			data.ConfigJSON = types.StringValue(string(b))
-		}
-	}
 }

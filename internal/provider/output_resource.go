@@ -5,7 +5,6 @@ package provider
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -18,8 +17,9 @@ import (
 )
 
 var (
-	_ resource.Resource                = &OutputResource{}
-	_ resource.ResourceWithImportState = &OutputResource{}
+	_ resource.Resource                 = &OutputResource{}
+	_ resource.ResourceWithImportState  = &OutputResource{}
+	_ resource.ResourceWithUpgradeState = &OutputResource{}
 )
 
 func NewOutputResource() resource.Resource {
@@ -31,6 +31,13 @@ type OutputResource struct {
 }
 
 type OutputResourceModel struct {
+	ID            types.String  `tfsdk:"id"`
+	Title         types.String  `tfsdk:"title"`
+	Type          types.String  `tfsdk:"type"`
+	Configuration types.Dynamic `tfsdk:"configuration"`
+}
+
+type outputResourceModelV0 struct {
 	ID                types.String `tfsdk:"id"`
 	Title             types.String `tfsdk:"title"`
 	Type              types.String `tfsdk:"type"`
@@ -43,6 +50,7 @@ func (r *OutputResource) Metadata(_ context.Context, req resource.MetadataReques
 
 func (r *OutputResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Version:             1,
 		MarkdownDescription: "Manages a Graylog output.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -54,9 +62,43 @@ func (r *OutputResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 				MarkdownDescription: "Graylog output type: short name (e.g. `LoggingOutput`, `GelfOutput`) or full Java type " +
 					"(`org.graylog2.outputs....`). Short names expand on API calls and collapse in state when known.",
 			},
-			"configuration_json": schema.StringAttribute{
+			"configuration": schema.DynamicAttribute{
 				Required:            true,
-				MarkdownDescription: "JSON object with plugin-specific output configuration.",
+				MarkdownDescription: "Plugin-specific output configuration object.",
+			},
+		},
+	}
+}
+
+func (r *OutputResource) UpgradeState(ctx context.Context) map[int64]resource.StateUpgrader {
+	return map[int64]resource.StateUpgrader{
+		0: {
+			PriorSchema: &schema.Schema{
+				Attributes: map[string]schema.Attribute{
+					"id":                 schema.StringAttribute{Computed: true},
+					"title":              schema.StringAttribute{Required: true},
+					"type":               schema.StringAttribute{Required: true},
+					"configuration_json": schema.StringAttribute{Required: true},
+				},
+			},
+			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+				var prior outputResourceModelV0
+				resp.Diagnostics.Append(req.State.Get(ctx, &prior)...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				dyn, err := upgradeJSONStringAttr(prior.ConfigurationJSON.ValueString())
+				if err != nil {
+					resp.Diagnostics.AddError("Failed to upgrade output configuration", err.Error())
+					return
+				}
+				upgraded := OutputResourceModel{
+					ID:            prior.ID,
+					Title:         prior.Title,
+					Type:          prior.Type,
+					Configuration: dyn,
+				}
+				resp.Diagnostics.Append(resp.State.Set(ctx, &upgraded)...)
 			},
 		},
 	}
@@ -81,7 +123,7 @@ func (r *OutputResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	outputReq, diags := outputFromModel(&data)
+	outputReq, diags := outputFromModel(ctx, &data)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -93,8 +135,7 @@ func (r *OutputResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 
-	mapOutputToResourceModel(created, &data)
-	populateOutputConfiguration(created, &data)
+	resp.Diagnostics.Append(mapOutputToResourceModel(ctx, created, &data)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -115,8 +156,7 @@ func (r *OutputResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 
-	mapOutputToResourceModel(current, &data)
-	populateOutputConfiguration(current, &data)
+	resp.Diagnostics.Append(mapOutputToResourceModel(ctx, current, &data)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -130,7 +170,7 @@ func (r *OutputResource) Update(ctx context.Context, req resource.UpdateRequest,
 	}
 
 	// Graylog output PUT is unreliable in this target environment; replace on update.
-	outputReq, diags := outputFromModel(&data)
+	outputReq, diags := outputFromModel(ctx, &data)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -147,8 +187,7 @@ func (r *OutputResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 
-	mapOutputToResourceModel(created, &data)
-	populateOutputConfiguration(created, &data)
+	resp.Diagnostics.Append(mapOutputToResourceModel(ctx, created, &data)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -168,11 +207,9 @@ func (r *OutputResource) ImportState(ctx context.Context, req resource.ImportSta
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func outputFromModel(data *OutputResourceModel) (*client.Output, diag.Diagnostics) {
-	var diags diag.Diagnostics
-	var cfg map[string]interface{}
-	if err := json.Unmarshal([]byte(data.ConfigurationJSON.ValueString()), &cfg); err != nil {
-		diags.AddError("Invalid configuration_json", fmt.Sprintf("Failed to parse configuration_json: %v", err))
+func outputFromModel(ctx context.Context, data *OutputResourceModel) (*client.Output, diag.Diagnostics) {
+	cfg, diags := dynamicToMap(ctx, data.Configuration)
+	if diags.HasError() {
 		return nil, diags
 	}
 
@@ -181,17 +218,4 @@ func outputFromModel(data *OutputResourceModel) (*client.Output, diag.Diagnostic
 		Type:          expandOutputType(data.Type.ValueString()),
 		Configuration: cfg,
 	}, diags
-}
-
-func populateOutputConfiguration(output *client.Output, data *OutputResourceModel) {
-	if output.Configuration == nil {
-		data.ConfigurationJSON = types.StringValue("{}")
-		return
-	}
-	b, err := json.Marshal(output.Configuration)
-	if err != nil {
-		data.ConfigurationJSON = types.StringValue("{}")
-		return
-	}
-	data.ConfigurationJSON = types.StringValue(string(b))
 }

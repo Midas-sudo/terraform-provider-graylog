@@ -23,7 +23,7 @@ data "graylog_lookup_data_adapter" "example" {
 
 ### Read-Only
 
-- `config_json` (String)
+- `config` (Dynamic)
 - `custom_error_ttl` (Number)
 - `custom_error_ttl_enabled` (Boolean)
 - `custom_error_ttl_unit` (String)

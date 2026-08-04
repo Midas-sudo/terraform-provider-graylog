@@ -5,7 +5,6 @@ package provider
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -20,8 +19,9 @@ import (
 )
 
 var (
-	_ resource.Resource                = &LookupCacheResource{}
-	_ resource.ResourceWithImportState = &LookupCacheResource{}
+	_ resource.Resource                 = &LookupCacheResource{}
+	_ resource.ResourceWithImportState  = &LookupCacheResource{}
+	_ resource.ResourceWithUpgradeState = &LookupCacheResource{}
 )
 
 func NewLookupCacheResource() resource.Resource {
@@ -33,6 +33,14 @@ type LookupCacheResource struct {
 }
 
 type LookupCacheResourceModel struct {
+	ID          types.String  `tfsdk:"id"`
+	Title       types.String  `tfsdk:"title"`
+	Name        types.String  `tfsdk:"name"`
+	Description types.String  `tfsdk:"description"`
+	Config      types.Dynamic `tfsdk:"config"`
+}
+
+type lookupCacheResourceModelV0 struct {
 	ID          types.String `tfsdk:"id"`
 	Title       types.String `tfsdk:"title"`
 	Name        types.String `tfsdk:"name"`
@@ -46,6 +54,7 @@ func (r *LookupCacheResource) Metadata(_ context.Context, req resource.MetadataR
 
 func (r *LookupCacheResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Version:             1,
 		MarkdownDescription: "Manages a Graylog lookup cache.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -57,9 +66,45 @@ func (r *LookupCacheResource) Schema(_ context.Context, _ resource.SchemaRequest
 			"title":       schema.StringAttribute{Required: true},
 			"name":        schema.StringAttribute{Required: true},
 			"description": schema.StringAttribute{Optional: true},
-			"config_json": schema.StringAttribute{
+			"config": schema.DynamicAttribute{
 				Required:            true,
-				MarkdownDescription: "JSON object with cache-specific configuration.",
+				MarkdownDescription: "Cache-specific configuration object.",
+			},
+		},
+	}
+}
+
+func (r *LookupCacheResource) UpgradeState(ctx context.Context) map[int64]resource.StateUpgrader {
+	return map[int64]resource.StateUpgrader{
+		0: {
+			PriorSchema: &schema.Schema{
+				Attributes: map[string]schema.Attribute{
+					"id":          schema.StringAttribute{Computed: true},
+					"title":       schema.StringAttribute{Required: true},
+					"name":        schema.StringAttribute{Required: true},
+					"description": schema.StringAttribute{Optional: true},
+					"config_json": schema.StringAttribute{Required: true},
+				},
+			},
+			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+				var prior lookupCacheResourceModelV0
+				resp.Diagnostics.Append(req.State.Get(ctx, &prior)...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				dyn, err := upgradeJSONStringAttr(prior.ConfigJSON.ValueString())
+				if err != nil {
+					resp.Diagnostics.AddError("Failed to upgrade lookup cache config", err.Error())
+					return
+				}
+				upgraded := LookupCacheResourceModel{
+					ID:          prior.ID,
+					Title:       prior.Title,
+					Name:        prior.Name,
+					Description: prior.Description,
+					Config:      dyn,
+				}
+				resp.Diagnostics.Append(resp.State.Set(ctx, &upgraded)...)
 			},
 		},
 	}
@@ -84,7 +129,7 @@ func (r *LookupCacheResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	cacheReq, diags := lookupCacheFromModel(&data)
+	cacheReq, diags := lookupCacheFromModel(ctx, &data)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -96,8 +141,7 @@ func (r *LookupCacheResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	mapLookupCacheToResourceModel(created, &data)
-	populateLookupCacheConfig(created, &data)
+	resp.Diagnostics.Append(mapLookupCacheToResourceModel(ctx, created, &data)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -118,34 +162,30 @@ func (r *LookupCacheResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	mapLookupCacheToResourceModel(current, &data)
-	populateLookupCacheConfig(current, &data)
+	resp.Diagnostics.Append(mapLookupCacheToResourceModel(ctx, current, &data)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (r *LookupCacheResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var data LookupCacheResourceModel
-	var state LookupCacheResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
-	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	cacheReq, diags := lookupCacheFromModel(&data)
+	cacheReq, diags := lookupCacheFromModel(ctx, &data)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	updated, err := r.client.UpdateLookupCache(ctx, state.ID.ValueString(), cacheReq)
+	updated, err := r.client.UpdateLookupCache(ctx, data.ID.ValueString(), cacheReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to update lookup cache", err.Error())
 		return
 	}
 
-	mapLookupCacheToResourceModel(updated, &data)
-	populateLookupCacheConfig(updated, &data)
+	resp.Diagnostics.Append(mapLookupCacheToResourceModel(ctx, updated, &data)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -165,12 +205,9 @@ func (r *LookupCacheResource) ImportState(ctx context.Context, req resource.Impo
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func lookupCacheFromModel(data *LookupCacheResourceModel) (*client.LookupCache, diag.Diagnostics) {
-	var diags diag.Diagnostics
-	var cfg map[string]interface{}
-
-	if err := json.Unmarshal([]byte(data.ConfigJSON.ValueString()), &cfg); err != nil {
-		diags.AddError("Invalid config_json", fmt.Sprintf("Failed to parse config_json: %v", err))
+func lookupCacheFromModel(ctx context.Context, data *LookupCacheResourceModel) (*client.LookupCache, diag.Diagnostics) {
+	cfg, diags := dynamicToMap(ctx, data.Config)
+	if diags.HasError() {
 		return nil, diags
 	}
 
@@ -183,17 +220,4 @@ func lookupCacheFromModel(data *LookupCacheResourceModel) (*client.LookupCache, 
 		cache.Description = data.Description.ValueString()
 	}
 	return cache, diags
-}
-
-func populateLookupCacheConfig(cache *client.LookupCache, data *LookupCacheResourceModel) {
-	if cache.Config == nil {
-		data.ConfigJSON = types.StringValue("{}")
-		return
-	}
-	b, err := json.Marshal(cache.Config)
-	if err != nil {
-		data.ConfigJSON = types.StringValue("{}")
-		return
-	}
-	data.ConfigJSON = types.StringValue(string(b))
 }

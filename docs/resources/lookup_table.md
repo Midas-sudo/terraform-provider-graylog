@@ -17,7 +17,7 @@ resource "graylog_lookup_data_adapter" "example" {
   title       = "Terraform Lookup Adapter"
   name        = "terraform-lookup-adapter"
   description = "Managed by Terraform"
-  config_json = jsonencode({
+  config = {
     type                    = "csvfile"
     path                    = "/tmp/lookup-table.csv"
     separator               = ","
@@ -28,16 +28,16 @@ resource "graylog_lookup_data_adapter" "example" {
     case_insensitive_lookup = false
     multi_value_lookup      = false
     cidr_lookup             = false
-  })
+  }
 }
 
 resource "graylog_lookup_cache" "example" {
   title       = "Terraform Lookup Cache"
   name        = "terraform-lookup-cache"
   description = "Managed by Terraform"
-  config_json = jsonencode({
+  config = {
     type = "none"
-  })
+  }
 }
 
 resource "graylog_lookup_table" "example" {

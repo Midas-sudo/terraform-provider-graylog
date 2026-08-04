@@ -3,12 +3,12 @@
 page_title: "graylog_extractors Data Source - graylog"
 subcategory: ""
 description: |-
-  Lists extractors for a specific Graylog input.
+  Lists extractors for a specific Graylog input. Nested extractor_config/converters are JSON strings (Plugin Framework limitation); use graylog_extractor for typed objects.
 ---
 
 # graylog_extractors (Data Source)
 
-Lists extractors for a specific Graylog input.
+Lists extractors for a specific Graylog input. Nested `extractor_config`/`converters` are JSON strings (Plugin Framework limitation); use `graylog_extractor` for typed objects.
 
 ## Example Usage
 
@@ -36,9 +36,9 @@ Read-Only:
 
 - `condition_type` (String)
 - `condition_value` (String)
-- `converters_json` (String)
+- `converters` (String) JSON-encoded converters array.
 - `cursor_strategy` (String)
-- `extractor_config_json` (String)
+- `extractor_config` (String) JSON-encoded configuration object.
 - `extractor_type` (String)
 - `id` (String)
 - `input_id` (String)

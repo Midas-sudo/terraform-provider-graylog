@@ -48,6 +48,27 @@ func TestAccUserResource(t *testing.T) {
 	})
 }
 
+func TestAccUserDataSources(t *testing.T) {
+	suffix := strings.ToLower(fmt.Sprintf("%x", time.Now().UnixNano()))
+	username := "tf-user-ds-" + suffix[:8]
+	email := username + "@example.local"
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccUserDataSourcesConfig(username, email),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrPair("data.graylog_user.test", "id", "graylog_user.test", "id"),
+					resource.TestCheckResourceAttr("data.graylog_user.test", "username", username),
+					resource.TestCheckResourceAttrSet("data.graylog_users.test", "users.0.id"),
+				),
+			},
+		},
+	})
+}
+
 func testAccUserResourceConfig(username, email string) string {
 	return fmt.Sprintf(`
 resource "graylog_user" "test" {
@@ -61,4 +82,16 @@ resource "graylog_user" "test" {
   roles = ["Reader"]
 }
 `, username, email)
+}
+
+func testAccUserDataSourcesConfig(username, email string) string {
+	return fmt.Sprintf(`
+%s
+
+data "graylog_user" "test" {
+  id = graylog_user.test.id
+}
+
+data "graylog_users" "test" {}
+`, testAccUserResourceConfig(username, email))
 }

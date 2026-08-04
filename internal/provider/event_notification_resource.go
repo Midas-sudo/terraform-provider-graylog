@@ -5,7 +5,6 @@ package provider
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -20,8 +19,9 @@ import (
 )
 
 var (
-	_ resource.Resource                = &EventNotificationResource{}
-	_ resource.ResourceWithImportState = &EventNotificationResource{}
+	_ resource.Resource                 = &EventNotificationResource{}
+	_ resource.ResourceWithImportState  = &EventNotificationResource{}
+	_ resource.ResourceWithUpgradeState = &EventNotificationResource{}
 )
 
 func NewEventNotificationResource() resource.Resource {
@@ -33,6 +33,13 @@ type EventNotificationResource struct {
 }
 
 type EventNotificationResourceModel struct {
+	ID          types.String  `tfsdk:"id"`
+	Title       types.String  `tfsdk:"title"`
+	Description types.String  `tfsdk:"description"`
+	Config      types.Dynamic `tfsdk:"config"`
+}
+
+type eventNotificationResourceModelV0 struct {
 	ID          types.String `tfsdk:"id"`
 	Title       types.String `tfsdk:"title"`
 	Description types.String `tfsdk:"description"`
@@ -45,6 +52,7 @@ func (r *EventNotificationResource) Metadata(_ context.Context, req resource.Met
 
 func (r *EventNotificationResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Version:             1,
 		MarkdownDescription: "Manages a Graylog event notification.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -61,9 +69,43 @@ func (r *EventNotificationResource) Schema(_ context.Context, _ resource.SchemaR
 				Optional:            true,
 				MarkdownDescription: "Notification description.",
 			},
-			"config_json": schema.StringAttribute{
+			"config": schema.DynamicAttribute{
 				Required:            true,
-				MarkdownDescription: "JSON object with notification-specific configuration.",
+				MarkdownDescription: "Notification-specific configuration object.",
+			},
+		},
+	}
+}
+
+func (r *EventNotificationResource) UpgradeState(ctx context.Context) map[int64]resource.StateUpgrader {
+	return map[int64]resource.StateUpgrader{
+		0: {
+			PriorSchema: &schema.Schema{
+				Attributes: map[string]schema.Attribute{
+					"id":          schema.StringAttribute{Computed: true},
+					"title":       schema.StringAttribute{Required: true},
+					"description": schema.StringAttribute{Optional: true},
+					"config_json": schema.StringAttribute{Required: true},
+				},
+			},
+			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+				var prior eventNotificationResourceModelV0
+				resp.Diagnostics.Append(req.State.Get(ctx, &prior)...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+				dyn, err := upgradeJSONStringAttr(prior.ConfigJSON.ValueString())
+				if err != nil {
+					resp.Diagnostics.AddError("Failed to upgrade event notification config", err.Error())
+					return
+				}
+				upgraded := EventNotificationResourceModel{
+					ID:          prior.ID,
+					Title:       prior.Title,
+					Description: prior.Description,
+					Config:      dyn,
+				}
+				resp.Diagnostics.Append(resp.State.Set(ctx, &upgraded)...)
 			},
 		},
 	}
@@ -88,8 +130,9 @@ func (r *EventNotificationResource) Create(ctx context.Context, req resource.Cre
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	plannedConfig := data.Config
 
-	notificationReq, diags := eventNotificationFromModel(&data)
+	notificationReq, diags := eventNotificationFromModel(ctx, &data)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -101,8 +144,8 @@ func (r *EventNotificationResource) Create(ctx context.Context, req resource.Cre
 		return
 	}
 
-	mapEventNotificationToResourceModel(created, &data)
-	populateEventNotificationConfig(created, &data)
+	resp.Diagnostics.Append(mapEventNotificationToResourceModel(ctx, created, &data)...)
+	data.Config = plannedConfig
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -123,34 +166,32 @@ func (r *EventNotificationResource) Read(ctx context.Context, req resource.ReadR
 		return
 	}
 
-	mapEventNotificationToResourceModel(current, &data)
-	populateEventNotificationConfig(current, &data)
+	resp.Diagnostics.Append(mapEventNotificationToResourceModel(ctx, current, &data)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (r *EventNotificationResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var data EventNotificationResourceModel
-	var state EventNotificationResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
-	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	plannedConfig := data.Config
 
-	notificationReq, diags := eventNotificationFromModel(&data)
+	notificationReq, diags := eventNotificationFromModel(ctx, &data)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	updated, err := r.client.UpdateEventNotification(ctx, state.ID.ValueString(), notificationReq)
+	updated, err := r.client.UpdateEventNotification(ctx, data.ID.ValueString(), notificationReq)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to update event notification", err.Error())
 		return
 	}
 
-	mapEventNotificationToResourceModel(updated, &data)
-	populateEventNotificationConfig(updated, &data)
+	resp.Diagnostics.Append(mapEventNotificationToResourceModel(ctx, updated, &data)...)
+	data.Config = plannedConfig
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -171,12 +212,9 @@ func (r *EventNotificationResource) ImportState(ctx context.Context, req resourc
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func eventNotificationFromModel(data *EventNotificationResourceModel) (*client.EventNotification, diag.Diagnostics) {
-	var diags diag.Diagnostics
-	var cfg map[string]interface{}
-
-	if err := json.Unmarshal([]byte(data.ConfigJSON.ValueString()), &cfg); err != nil {
-		diags.AddError("Invalid config_json", fmt.Sprintf("Failed to parse config_json: %v", err))
+func eventNotificationFromModel(ctx context.Context, data *EventNotificationResourceModel) (*client.EventNotification, diag.Diagnostics) {
+	cfg, diags := dynamicToMap(ctx, data.Config)
+	if diags.HasError() {
 		return nil, diags
 	}
 
@@ -188,20 +226,4 @@ func eventNotificationFromModel(data *EventNotificationResourceModel) (*client.E
 		notification.Description = data.Description.ValueString()
 	}
 	return notification, diags
-}
-
-func populateEventNotificationConfig(notification *client.EventNotification, data *EventNotificationResourceModel) {
-	if !data.ConfigJSON.IsNull() && !data.ConfigJSON.IsUnknown() && data.ConfigJSON.ValueString() != "" {
-		return
-	}
-	if notification.Config == nil {
-		data.ConfigJSON = types.StringValue("{}")
-		return
-	}
-	b, err := json.Marshal(notification.Config)
-	if err != nil {
-		data.ConfigJSON = types.StringValue("{}")
-		return
-	}
-	data.ConfigJSON = types.StringValue(string(b))
 }

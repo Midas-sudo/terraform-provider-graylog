@@ -81,6 +81,48 @@ func TestAccDashboardResource(t *testing.T) {
 	})
 }
 
+func TestAccViewDataSources(t *testing.T) {
+	searchID := testAccResolveSearchID(t)
+	suffix := strings.ToLower(fmt.Sprintf("%x", time.Now().UnixNano()))
+	title := "TF View DS " + suffix[:8]
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccViewDataSourcesConfig(title, searchID),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrPair("data.graylog_view.test", "id", "graylog_view.test", "id"),
+					resource.TestCheckResourceAttr("data.graylog_view.test", "title", title),
+					resource.TestCheckResourceAttrSet("data.graylog_views.test", "views.0.id"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccDashboardDataSources(t *testing.T) {
+	searchID := testAccResolveSearchID(t)
+	suffix := strings.ToLower(fmt.Sprintf("%x", time.Now().UnixNano()))
+	title := "TF Dashboard DS " + suffix[:8]
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccDashboardDataSourcesConfig(title, searchID),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrPair("data.graylog_dashboard.test", "id", "graylog_dashboard.test", "id"),
+					resource.TestCheckResourceAttr("data.graylog_dashboard.test", "title", title),
+					resource.TestCheckResourceAttrSet("data.graylog_dashboards.test", "dashboards.0.id"),
+				),
+			},
+		},
+	})
+}
+
 func testAccViewResourceConfig(title, searchID string) string {
 	return fmt.Sprintf(`
 resource "graylog_view" "test" {
@@ -93,6 +135,30 @@ resource "graylog_view" "test" {
   state_json  = jsonencode({})
 }
 `, title, searchID)
+}
+
+func testAccViewDataSourcesConfig(title, searchID string) string {
+	return fmt.Sprintf(`
+%s
+
+data "graylog_view" "test" {
+  id = graylog_view.test.id
+}
+
+data "graylog_views" "test" {}
+`, testAccViewResourceConfig(title, searchID))
+}
+
+func testAccDashboardDataSourcesConfig(title, searchID string) string {
+	return fmt.Sprintf(`
+%s
+
+data "graylog_dashboard" "test" {
+  id = graylog_dashboard.test.id
+}
+
+data "graylog_dashboards" "test" {}
+`, testAccDashboardResourceConfig(title, searchID))
 }
 
 func testAccDashboardResourceConfig(title, searchID string) string {

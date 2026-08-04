@@ -110,25 +110,106 @@ func TestAccGrokPatternResource(t *testing.T) {
 	})
 }
 
+func TestAccOutputDataSources(t *testing.T) {
+	suffix := strings.ToLower(fmt.Sprintf("%x", time.Now().UnixNano()))
+	title := "tf-output-ds-" + suffix[:8]
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccOutputDataSourcesConfig(title),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrPair("data.graylog_output.test", "id", "graylog_output.test", "id"),
+					resource.TestCheckResourceAttr("data.graylog_output.test", "title", title),
+					resource.TestCheckResourceAttrSet("data.graylog_outputs.test", "outputs.0.id"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccExtractorDataSources(t *testing.T) {
+	suffix := strings.ToLower(fmt.Sprintf("%x", time.Now().UnixNano()))
+	title := "tf-extractor-ds-" + suffix[:8]
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccExtractorDataSourcesConfig(title),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrPair("data.graylog_extractor.test", "id", "graylog_extractor.test", "id"),
+					resource.TestCheckResourceAttr("data.graylog_extractor.test", "title", title),
+					resource.TestCheckResourceAttrSet("data.graylog_extractors.test", "extractors.0.id"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccGrokPatternDataSources(t *testing.T) {
+	suffix := strings.ToLower(fmt.Sprintf("%x", time.Now().UnixNano()))
+	name := "TFGROKDS" + suffix[:8]
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccGrokPatternDataSourcesConfig(name),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrSet("data.graylog_grok_patterns.test", "patterns.0.id"),
+					resource.TestCheckResourceAttrSet("data.graylog_grok_patterns.test", "patterns.0.name"),
+				),
+			},
+		},
+	})
+}
+
 func testAccOutputResourceConfig(title string) string {
 	return fmt.Sprintf(`
 resource "graylog_output" "test" {
   title = %[1]q
   type  = "LoggingOutput"
 
-  configuration_json = jsonencode({
+  configuration = {
     prefix = "terraform-output:"
-  })
+  }
 }
 `, title)
 }
 
-func testAccExtractorResourceConfig(title string) string {
+func testAccOutputDataSourcesConfig(title string) string {
 	return fmt.Sprintf(`
-data "graylog_inputs" "all" {}
+%s
+
+data "graylog_output" "test" {
+  id = graylog_output.test.id
+}
+
+data "graylog_outputs" "test" {}
+`, testAccOutputResourceConfig(title))
+}
+
+func testAccExtractorDataSourcesConfig(title string) string {
+	return fmt.Sprintf(`
+resource "graylog_input" "extractor_ds" {
+  title  = "TF Acc Extractor DS Input"
+  type   = "SyslogUDPInput"
+  global = true
+
+  configuration = {
+    bind_address     = "0.0.0.0"
+    port             = 15141
+    recv_buffer_size = 262144
+  }
+}
 
 resource "graylog_extractor" "test" {
-  input_id = data.graylog_inputs.all.inputs[0].id
+  input_id        = graylog_input.extractor_ds.id
   title           = %[1]q
   source_field    = "message"
   target_field    = "message_copy"
@@ -136,8 +217,55 @@ resource "graylog_extractor" "test" {
   cursor_strategy = "copy"
   condition_type  = "none"
   condition_value = ""
-  extractor_config_json = jsonencode({})
-  converters_json       = jsonencode([])
+  extractor_config = {}
+  converters       = []
+  order                 = 0
+}
+
+data "graylog_extractor" "test" {
+  id       = graylog_extractor.test.id
+  input_id = graylog_extractor.test.input_id
+}
+
+data "graylog_extractors" "test" {
+  input_id = graylog_extractor.test.input_id
+}
+`, title)
+}
+
+func testAccGrokPatternDataSourcesConfig(name string) string {
+	return fmt.Sprintf(`
+%s
+
+data "graylog_grok_patterns" "test" {}
+`, testAccGrokPatternResourceConfig(name, "foo(?<bar>.*)"))
+}
+
+func testAccExtractorResourceConfig(title string) string {
+	return fmt.Sprintf(`
+resource "graylog_input" "extractor_host" {
+  title  = "TF Acc Extractor Host Input"
+  type   = "SyslogUDPInput"
+  global = true
+
+  configuration = {
+    bind_address     = "0.0.0.0"
+    port             = 15143
+    recv_buffer_size = 262144
+  }
+}
+
+resource "graylog_extractor" "test" {
+  input_id        = graylog_input.extractor_host.id
+  title           = %[1]q
+  source_field    = "message"
+  target_field    = "message_copy"
+  extractor_type  = "copy_input"
+  cursor_strategy = "copy"
+  condition_type  = "none"
+  condition_value = ""
+  extractor_config = {}
+  converters       = []
   order                 = 0
 }
 `, title)

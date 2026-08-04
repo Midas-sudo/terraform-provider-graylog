@@ -3,12 +3,12 @@
 page_title: "graylog_outputs Data Source - graylog"
 subcategory: ""
 description: |-
-  Lists Graylog outputs.
+  Lists Graylog outputs. Nested configuration is a JSON string (Plugin Framework limitation); use graylog_output for a typed object.
 ---
 
 # graylog_outputs (Data Source)
 
-Lists Graylog outputs.
+Lists Graylog outputs. Nested `configuration` is a JSON string (Plugin Framework limitation); use `graylog_output` for a typed object.
 
 ## Example Usage
 
@@ -28,7 +28,7 @@ data "graylog_outputs" "example" {}
 
 Read-Only:
 
-- `configuration_json` (String)
+- `configuration` (String) JSON-encoded configuration object.
 - `id` (String)
 - `title` (String)
 - `type` (String)

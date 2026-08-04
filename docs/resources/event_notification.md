@@ -17,10 +17,10 @@ resource "graylog_event_notification" "example" {
   title       = "Terraform Event Notification"
   description = "Managed by Terraform"
 
-  config_json = jsonencode({
+  config = {
     type = "http-notification-v1"
     url  = "https://example.org/graylog/events"
-  })
+  }
 }
 ```
 
@@ -29,7 +29,7 @@ resource "graylog_event_notification" "example" {
 
 ### Required
 
-- `config_json` (String) JSON object with notification-specific configuration.
+- `config` (Dynamic) Notification-specific configuration object.
 - `title` (String) Notification title.
 
 ### Optional

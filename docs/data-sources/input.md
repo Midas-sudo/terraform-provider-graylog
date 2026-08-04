@@ -27,7 +27,7 @@ data "graylog_input" "example" {
 
 ### Read-Only
 
-- `configuration` (String) The input configuration as a JSON string.
+- `configuration` (Dynamic) The input configuration object.
 - `created_at` (String) Timestamp when the input was created.
 - `global` (Boolean) Whether the input runs on all nodes.
 - `node` (String) The node ID if the input is local.

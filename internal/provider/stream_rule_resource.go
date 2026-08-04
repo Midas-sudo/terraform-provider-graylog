@@ -174,9 +174,16 @@ func (r *StreamRuleResource) Update(ctx context.Context, req resource.UpdateRequ
 		Description: data.Description.ValueString(),
 	}
 
-	updated, err := r.client.UpdateStreamRule(ctx, data.StreamID.ValueString(), data.ID.ValueString(), rule)
-	if err != nil {
+	if err := r.client.UpdateStreamRule(ctx, data.StreamID.ValueString(), data.ID.ValueString(), rule); err != nil {
 		resp.Diagnostics.AddError("Failed to update stream rule", err.Error())
+		return
+	}
+
+	// Graylog's PUT /streams/{id}/rules/{ruleId} returns only {"streamrule_id":"..."},
+	// so re-read the full rule for state.
+	updated, err := r.client.GetStreamRule(ctx, data.StreamID.ValueString(), data.ID.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to read updated stream rule", err.Error())
 		return
 	}
 

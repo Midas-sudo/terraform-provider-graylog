@@ -14,6 +14,8 @@ import (
 	"terraform-provider-graylog/internal/client"
 )
 
+// list DS models keep config as JSON string (framework: no Dynamic in nested collections).
+
 var _ datasource.DataSource = &LookupDataAdapterDataSource{}
 
 func NewLookupDataAdapterDataSource() datasource.DataSource {
@@ -25,11 +27,22 @@ type LookupDataAdapterDataSource struct {
 }
 
 type LookupDataAdapterDataSourceModel struct {
+	ID                    types.String  `tfsdk:"id"`
+	Title                 types.String  `tfsdk:"title"`
+	Name                  types.String  `tfsdk:"name"`
+	Description           types.String  `tfsdk:"description"`
+	Config                types.Dynamic `tfsdk:"config"`
+	CustomErrorTTLEnabled types.Bool    `tfsdk:"custom_error_ttl_enabled"`
+	CustomErrorTTL        types.Int64   `tfsdk:"custom_error_ttl"`
+	CustomErrorTTLUnit    types.String  `tfsdk:"custom_error_ttl_unit"`
+}
+
+type lookupDataAdapterListItemModel struct {
 	ID                    types.String `tfsdk:"id"`
 	Title                 types.String `tfsdk:"title"`
 	Name                  types.String `tfsdk:"name"`
 	Description           types.String `tfsdk:"description"`
-	ConfigJSON            types.String `tfsdk:"config_json"`
+	Config                types.String `tfsdk:"config"`
 	CustomErrorTTLEnabled types.Bool   `tfsdk:"custom_error_ttl_enabled"`
 	CustomErrorTTL        types.Int64  `tfsdk:"custom_error_ttl"`
 	CustomErrorTTLUnit    types.String `tfsdk:"custom_error_ttl_unit"`
@@ -47,7 +60,7 @@ func (d *LookupDataAdapterDataSource) Schema(_ context.Context, _ datasource.Sch
 			"title":                    schema.StringAttribute{Computed: true},
 			"name":                     schema.StringAttribute{Computed: true},
 			"description":              schema.StringAttribute{Computed: true},
-			"config_json":              schema.StringAttribute{Computed: true},
+			"config":                   schema.DynamicAttribute{Computed: true},
 			"custom_error_ttl_enabled": schema.BoolAttribute{Computed: true},
 			"custom_error_ttl":         schema.Int64Attribute{Computed: true},
 			"custom_error_ttl_unit":    schema.StringAttribute{Computed: true},
@@ -80,7 +93,7 @@ func (d *LookupDataAdapterDataSource) Read(ctx context.Context, req datasource.R
 		return
 	}
 
-	mapLookupDataAdapterToDataSourceModel(adapter, &data)
+	resp.Diagnostics.Append(mapLookupDataAdapterToDataSourceModel(ctx, adapter, &data)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -95,7 +108,7 @@ type LookupDataAdaptersDataSource struct {
 }
 
 type LookupDataAdaptersDataSourceModel struct {
-	DataAdapters []LookupDataAdapterDataSourceModel `tfsdk:"data_adapters"`
+	DataAdapters []lookupDataAdapterListItemModel `tfsdk:"data_adapters"`
 }
 
 func (d *LookupDataAdaptersDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -104,7 +117,8 @@ func (d *LookupDataAdaptersDataSource) Metadata(_ context.Context, req datasourc
 
 func (d *LookupDataAdaptersDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Lists Graylog lookup data adapters.",
+		MarkdownDescription: "Lists Graylog lookup data adapters. Nested `config` is a JSON string " +
+			"(Plugin Framework limitation); use `graylog_lookup_data_adapter` for a typed object.",
 		Attributes: map[string]schema.Attribute{
 			"data_adapters": schema.ListNestedAttribute{
 				Computed: true,
@@ -114,7 +128,7 @@ func (d *LookupDataAdaptersDataSource) Schema(_ context.Context, _ datasource.Sc
 						"title":                    schema.StringAttribute{Computed: true},
 						"name":                     schema.StringAttribute{Computed: true},
 						"description":              schema.StringAttribute{Computed: true},
-						"config_json":              schema.StringAttribute{Computed: true},
+						"config":                   schema.StringAttribute{Computed: true, MarkdownDescription: "JSON-encoded configuration object."},
 						"custom_error_ttl_enabled": schema.BoolAttribute{Computed: true},
 						"custom_error_ttl":         schema.Int64Attribute{Computed: true},
 						"custom_error_ttl_unit":    schema.StringAttribute{Computed: true},
@@ -146,8 +160,28 @@ func (d *LookupDataAdaptersDataSource) Read(ctx context.Context, _ datasource.Re
 
 	var data LookupDataAdaptersDataSourceModel
 	for _, adapter := range result.DataAdapters {
-		row := LookupDataAdapterDataSourceModel{}
-		mapLookupDataAdapterToDataSourceModel(&adapter, &row)
+		row := lookupDataAdapterListItemModel{
+			ID:          types.StringValue(adapter.ID),
+			Title:       types.StringValue(adapter.Title),
+			Name:        types.StringValue(adapter.Name),
+			Description: types.StringValue(adapter.Description),
+			Config:      lookupConfigJSONString(adapter.Config),
+		}
+		if adapter.CustomErrorTTLEnabled != nil {
+			row.CustomErrorTTLEnabled = types.BoolValue(*adapter.CustomErrorTTLEnabled)
+		} else {
+			row.CustomErrorTTLEnabled = types.BoolNull()
+		}
+		if adapter.CustomErrorTTL != nil {
+			row.CustomErrorTTL = types.Int64Value(*adapter.CustomErrorTTL)
+		} else {
+			row.CustomErrorTTL = types.Int64Null()
+		}
+		if adapter.CustomErrorTTLUnit != nil {
+			row.CustomErrorTTLUnit = types.StringValue(*adapter.CustomErrorTTLUnit)
+		} else {
+			row.CustomErrorTTLUnit = types.StringNull()
+		}
 		data.DataAdapters = append(data.DataAdapters, row)
 	}
 
@@ -165,11 +199,19 @@ type LookupCacheDataSource struct {
 }
 
 type LookupCacheDataSourceModel struct {
+	ID          types.String  `tfsdk:"id"`
+	Title       types.String  `tfsdk:"title"`
+	Name        types.String  `tfsdk:"name"`
+	Description types.String  `tfsdk:"description"`
+	Config      types.Dynamic `tfsdk:"config"`
+}
+
+type lookupCacheListItemModel struct {
 	ID          types.String `tfsdk:"id"`
 	Title       types.String `tfsdk:"title"`
 	Name        types.String `tfsdk:"name"`
 	Description types.String `tfsdk:"description"`
-	ConfigJSON  types.String `tfsdk:"config_json"`
+	Config      types.String `tfsdk:"config"`
 }
 
 func (d *LookupCacheDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -184,7 +226,7 @@ func (d *LookupCacheDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 			"title":       schema.StringAttribute{Computed: true},
 			"name":        schema.StringAttribute{Computed: true},
 			"description": schema.StringAttribute{Computed: true},
-			"config_json": schema.StringAttribute{Computed: true},
+			"config": schema.DynamicAttribute{Computed: true},
 		},
 	}
 }
@@ -214,7 +256,7 @@ func (d *LookupCacheDataSource) Read(ctx context.Context, req datasource.ReadReq
 		return
 	}
 
-	mapLookupCacheToDataSourceModel(cache, &data)
+	resp.Diagnostics.Append(mapLookupCacheToDataSourceModel(ctx, cache, &data)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -229,7 +271,7 @@ type LookupCachesDataSource struct {
 }
 
 type LookupCachesDataSourceModel struct {
-	Caches []LookupCacheDataSourceModel `tfsdk:"caches"`
+	Caches []lookupCacheListItemModel `tfsdk:"caches"`
 }
 
 func (d *LookupCachesDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -238,7 +280,8 @@ func (d *LookupCachesDataSource) Metadata(_ context.Context, req datasource.Meta
 
 func (d *LookupCachesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Lists Graylog lookup caches.",
+		MarkdownDescription: "Lists Graylog lookup caches. Nested `config` is a JSON string " +
+			"(Plugin Framework limitation); use `graylog_lookup_cache` for a typed object.",
 		Attributes: map[string]schema.Attribute{
 			"caches": schema.ListNestedAttribute{
 				Computed: true,
@@ -248,7 +291,7 @@ func (d *LookupCachesDataSource) Schema(_ context.Context, _ datasource.SchemaRe
 						"title":       schema.StringAttribute{Computed: true},
 						"name":        schema.StringAttribute{Computed: true},
 						"description": schema.StringAttribute{Computed: true},
-						"config_json": schema.StringAttribute{Computed: true},
+						"config":      schema.StringAttribute{Computed: true, MarkdownDescription: "JSON-encoded configuration object."},
 					},
 				},
 			},
@@ -277,9 +320,13 @@ func (d *LookupCachesDataSource) Read(ctx context.Context, _ datasource.ReadRequ
 
 	var data LookupCachesDataSourceModel
 	for _, cache := range result.Caches {
-		row := LookupCacheDataSourceModel{}
-		mapLookupCacheToDataSourceModel(&cache, &row)
-		data.Caches = append(data.Caches, row)
+		data.Caches = append(data.Caches, lookupCacheListItemModel{
+			ID:          types.StringValue(cache.ID),
+			Title:       types.StringValue(cache.Title),
+			Name:        types.StringValue(cache.Name),
+			Description: types.StringValue(cache.Description),
+			Config:      lookupConfigJSONString(cache.Config),
+		})
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

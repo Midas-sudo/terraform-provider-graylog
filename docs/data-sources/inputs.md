@@ -3,12 +3,12 @@
 page_title: "graylog_inputs Data Source - graylog"
 subcategory: ""
 description: |-
-  Lists all Graylog inputs.
+  Lists all Graylog inputs. Nested configuration is a JSON string (Plugin Framework limitation); use graylog_input for a typed object.
 ---
 
 # graylog_inputs (Data Source)
 
-Lists all Graylog inputs.
+Lists all Graylog inputs. Nested `configuration` is a JSON string (Plugin Framework limitation); use `graylog_input` for a typed object.
 
 ## Example Usage
 
@@ -32,7 +32,7 @@ output "input_names" {
 
 Read-Only:
 
-- `configuration` (String)
+- `configuration` (String) JSON-encoded configuration object.
 - `created_at` (String)
 - `global` (Boolean)
 - `id` (String)

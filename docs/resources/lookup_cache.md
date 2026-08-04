@@ -18,9 +18,9 @@ resource "graylog_lookup_cache" "example" {
   name        = "terraform-lookup-cache"
   description = "Managed by Terraform"
 
-  config_json = jsonencode({
+  config = {
     type = "none"
-  })
+  }
 }
 ```
 
@@ -29,7 +29,7 @@ resource "graylog_lookup_cache" "example" {
 
 ### Required
 
-- `config_json` (String) JSON object with cache-specific configuration.
+- `config` (Dynamic) Cache-specific configuration object.
 - `name` (String)
 - `title` (String)
 

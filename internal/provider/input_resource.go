@@ -5,9 +5,9 @@ package provider
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -20,8 +20,9 @@ import (
 )
 
 var (
-	_ resource.Resource                = &InputResource{}
-	_ resource.ResourceWithImportState = &InputResource{}
+	_ resource.Resource                 = &InputResource{}
+	_ resource.ResourceWithImportState  = &InputResource{}
+	_ resource.ResourceWithUpgradeState = &InputResource{}
 )
 
 func NewInputResource() resource.Resource {
@@ -33,6 +34,16 @@ type InputResource struct {
 }
 
 type InputResourceModel struct {
+	ID            types.String  `tfsdk:"id"`
+	Title         types.String  `tfsdk:"title"`
+	Type          types.String  `tfsdk:"type"`
+	Global        types.Bool    `tfsdk:"global"`
+	Node          types.String  `tfsdk:"node"`
+	Configuration types.Dynamic `tfsdk:"configuration"`
+	StaticFields  types.Map     `tfsdk:"static_fields"`
+}
+
+type inputResourceModelV0 struct {
 	ID            types.String `tfsdk:"id"`
 	Title         types.String `tfsdk:"title"`
 	Type          types.String `tfsdk:"type"`
@@ -48,6 +59,7 @@ func (r *InputResource) Metadata(_ context.Context, req resource.MetadataRequest
 
 func (r *InputResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Version: 1,
 		MarkdownDescription: "Manages a Graylog input. Inputs define how Graylog receives log messages " +
 			"(e.g. Syslog UDP, GELF TCP, Beats, etc.).",
 		Attributes: map[string]schema.Attribute{
@@ -81,14 +93,57 @@ func (r *InputResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 				Optional:            true,
 				MarkdownDescription: "Node ID to run a local input on. Required when `global` is `false`.",
 			},
-			"configuration": schema.StringAttribute{
-				Required:            true,
-				MarkdownDescription: "Input configuration as a JSON string. The schema depends on the input `type`.",
+			"configuration": schema.DynamicAttribute{
+				Required: true,
+				MarkdownDescription: "Input configuration object. Keys depend on the input `type` " +
+					"(e.g. `bind_address`, `port`, `recv_buffer_size`).",
 			},
 			"static_fields": schema.MapAttribute{
 				ElementType:         types.StringType,
 				Optional:            true,
 				MarkdownDescription: "Static fields to add to every message received by this input.",
+			},
+		},
+	}
+}
+
+func (r *InputResource) UpgradeState(ctx context.Context) map[int64]resource.StateUpgrader {
+	return map[int64]resource.StateUpgrader{
+		0: {
+			PriorSchema: &schema.Schema{
+				Attributes: map[string]schema.Attribute{
+					"id":            schema.StringAttribute{Computed: true},
+					"title":         schema.StringAttribute{Required: true},
+					"type":          schema.StringAttribute{Required: true},
+					"global":        schema.BoolAttribute{Optional: true, Computed: true},
+					"node":          schema.StringAttribute{Optional: true},
+					"configuration": schema.StringAttribute{Required: true},
+					"static_fields": schema.MapAttribute{ElementType: types.StringType, Optional: true},
+				},
+			},
+			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+				var prior inputResourceModelV0
+				resp.Diagnostics.Append(req.State.Get(ctx, &prior)...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+
+				dyn, err := upgradeJSONStringAttr(prior.Configuration.ValueString())
+				if err != nil {
+					resp.Diagnostics.AddError("Failed to upgrade input configuration", err.Error())
+					return
+				}
+
+				upgraded := InputResourceModel{
+					ID:            prior.ID,
+					Title:         prior.Title,
+					Type:          prior.Type,
+					Global:        prior.Global,
+					Node:          prior.Node,
+					Configuration: dyn,
+					StaticFields:  prior.StaticFields,
+				}
+				resp.Diagnostics.Append(resp.State.Set(ctx, &upgraded)...)
 			},
 		},
 	}
@@ -114,9 +169,9 @@ func (r *InputResource) Create(ctx context.Context, req resource.CreateRequest, 
 		return
 	}
 
-	config, diags := parseJSONConfig(data.Configuration.ValueString())
-	if diags != nil {
-		resp.Diagnostics.AddError("Invalid configuration JSON", diags.Error())
+	config, diags := dynamicToMap(ctx, data.Configuration)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
@@ -142,7 +197,7 @@ func (r *InputResource) Create(ctx context.Context, req resource.CreateRequest, 
 		return
 	}
 
-	mapInputToModel(input, &data)
+	resp.Diagnostics.Append(mapInputToModel(ctx, input, &data)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -163,7 +218,7 @@ func (r *InputResource) Read(ctx context.Context, req resource.ReadRequest, resp
 		return
 	}
 
-	mapInputToModel(input, &data)
+	resp.Diagnostics.Append(mapInputToModel(ctx, input, &data)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -174,9 +229,9 @@ func (r *InputResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		return
 	}
 
-	config, diags := parseJSONConfig(data.Configuration.ValueString())
-	if diags != nil {
-		resp.Diagnostics.AddError("Invalid configuration JSON", diags.Error())
+	config, diags := dynamicToMap(ctx, data.Configuration)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
 		return
 	}
 
@@ -200,7 +255,7 @@ func (r *InputResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		return
 	}
 
-	mapInputToModel(input, &data)
+	resp.Diagnostics.Append(mapInputToModel(ctx, input, &data)...)
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -221,7 +276,9 @@ func (r *InputResource) ImportState(ctx context.Context, req resource.ImportStat
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
 }
 
-func mapInputToModel(input *client.Input, data *InputResourceModel) {
+func mapInputToModel(ctx context.Context, input *client.Input, data *InputResourceModel) diag.Diagnostics {
+	// Preserve planned/state Dynamic configuration when already known.
+	var diags diag.Diagnostics
 	data.ID = types.StringValue(input.ID)
 	data.Title = types.StringValue(input.Title)
 	data.Type = types.StringValue(collapseInputType(input.Type))
@@ -229,11 +286,20 @@ func mapInputToModel(input *client.Input, data *InputResourceModel) {
 
 	if input.Node != "" {
 		data.Node = types.StringValue(input.Node)
+	} else {
+		data.Node = types.StringNull()
 	}
 
-	if input.Attributes != nil {
-		configJSON, _ := json.Marshal(input.Attributes)
-		data.Configuration = types.StringValue(string(configJSON))
+	if data.Configuration.IsNull() || data.Configuration.IsUnknown() {
+		if input.Attributes != nil {
+			dyn, d := interfaceToDynamic(ctx, input.Attributes)
+			diags.Append(d...)
+			data.Configuration = dyn
+		} else {
+			empty, d := interfaceToDynamic(ctx, map[string]interface{}{})
+			diags.Append(d...)
+			data.Configuration = empty
+		}
 	}
 
 	if len(input.StaticFields) > 0 {
@@ -241,14 +307,10 @@ func mapInputToModel(input *client.Input, data *InputResourceModel) {
 		for k, v := range input.StaticFields {
 			elems[k] = types.StringValue(v)
 		}
-		// Preserve existing static_fields even when empty from API
+		m, d := types.MapValueFrom(ctx, types.StringType, elems)
+		diags.Append(d...)
+		data.StaticFields = m
 	}
-}
 
-func parseJSONConfig(s string) (map[string]interface{}, error) {
-	var config map[string]interface{}
-	if err := json.Unmarshal([]byte(s), &config); err != nil {
-		return nil, fmt.Errorf("configuration must be valid JSON: %w", err)
-	}
-	return config, nil
+	return diags
 }

@@ -16,17 +16,17 @@ Manages a Graylog extractor for a specific input.
 data "graylog_inputs" "all" {}
 
 resource "graylog_extractor" "example" {
-  input_id              = data.graylog_inputs.all.inputs[0].id
-  title                 = "Terraform Extractor"
-  source_field          = "message"
-  target_field          = "message_copy"
-  extractor_type        = "copy_input"
-  cursor_strategy       = "copy"
-  condition_type        = "none"
-  condition_value       = ""
-  extractor_config_json = jsonencode({})
-  converters_json       = jsonencode([])
-  order                 = 0
+  input_id         = data.graylog_inputs.all.inputs[0].id
+  title            = "Terraform Extractor"
+  source_field     = "message"
+  target_field     = "message_copy"
+  extractor_type   = "copy_input"
+  cursor_strategy  = "copy"
+  condition_type   = "none"
+  condition_value  = ""
+  extractor_config = {}
+  converters       = []
+  order            = 0
 }
 ```
 
@@ -46,8 +46,8 @@ resource "graylog_extractor" "example" {
 ### Optional
 
 - `condition_value` (String)
-- `converters_json` (String) JSON array with converter configurations.
-- `extractor_config_json` (String) JSON object with extractor-specific configuration.
+- `converters` (Dynamic) List of converter configuration objects.
+- `extractor_config` (Dynamic) Extractor-specific configuration object.
 - `order` (Number)
 
 ### Read-Only
