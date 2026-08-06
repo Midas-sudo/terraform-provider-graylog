@@ -1,0 +1,42 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.RenderedProviderName}}"
+subcategory: ""
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{ .Description | trimspace }}
+
+{{ if .HasExamples -}}
+## Example Usage
+{{- range .ExampleFiles }}
+
+{{ tffile . }}
+{{- end }}
+{{- end }}
+
+## Configuration by type
+
+`config` must include `type`. Discover fields with
+[`graylog_event_notification_types`](../data-sources/event_notification_types.md)
+(built-in modern types plus legacy alarm callbacks from Graylog).
+
+| Type | Common keys |
+|---|---|
+| `http-notification-v1` | `url` (required), `basic_auth`, `api_key`, `api_secret`, `api_key_as_header`, `skip_tls_verification` |
+| `http-notification-v2` | `url`, `method`, `headers`, `body_template`, `content_type`, `skip_tls_verification` |
+| `email-notification-v1` | `subject`, `sender`, `body_template`, `html_body_template`, `email_recipients`, `user_recipients` |
+
+{{ .SchemaMarkdown | trimspace }}
+{{- if .HasImport }}
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+{{ codefile "shell" .ImportFile }}
+{{- end }}

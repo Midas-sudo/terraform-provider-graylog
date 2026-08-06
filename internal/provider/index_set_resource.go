@@ -172,22 +172,25 @@ func (r *IndexSetResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				MarkdownDescription: "Whether legacy rotation mode is enabled.",
 			},
 			"rotation_strategy_class": schema.StringAttribute{
-				Required: true,
+				Required:            true,
 				MarkdownDescription: "Rotation strategy class. Use a short name such as `MessageCountRotationStrategy`, `SizeBasedRotationStrategy`, `TimeBasedRotationStrategy`, or `TimeBasedSizeOptimizingStrategy`, or the full Graylog Java class (e.g. `org.graylog2.indexer.rotation.strategies.MessageCountRotationStrategy`).",
 			},
 			"retention_strategy_class": schema.StringAttribute{
-				Required: true,
+				Required:            true,
 				MarkdownDescription: "Retention strategy class. Use a short name such as `DeletionRetentionStrategy` or `NoopRetentionStrategy`, or the full Graylog Java class (e.g. `org.graylog2.indexer.retention.strategies.DeletionRetentionStrategy`).",
 			},
 			"rotation_strategy": schema.DynamicAttribute{
 				Required: true,
-				MarkdownDescription: "Rotation strategy configuration object. Must include `type` (short name or FQCN). " +
-					"Strategy-specific keys are passed through to Graylog (e.g. `rotation_period`, `max_docs_per_index`, `max_size`, `rotate_empty_index_set`).",
+				MarkdownDescription: "HCL object passed through to Graylog. Must include `type` (short config name or FQCN). " +
+					"Discover fields with [`graylog_index_set_strategy_types`](../data-sources/index_set_strategy_types.md) " +
+					"(`rotation`). Examples: TimeBased uses `rotation_period`; MessageCount uses `max_docs_per_index`; " +
+					"SizeBased uses `max_size`.",
 			},
 			"retention_strategy": schema.DynamicAttribute{
 				Required: true,
-				MarkdownDescription: "Retention strategy configuration object. Must include `type` (short name or FQCN). " +
-					"Strategy-specific keys are passed through (e.g. `max_number_of_indices`).",
+				MarkdownDescription: "HCL object passed through to Graylog. Must include `type` (short config name or FQCN). " +
+					"Discover fields with [`graylog_index_set_strategy_types`](../data-sources/index_set_strategy_types.md) " +
+					"(`retention`). Deletion uses `max_number_of_indices`.",
 			},
 			"set_as_default": schema.BoolAttribute{
 				Optional:            true,
@@ -239,23 +242,23 @@ func (r *IndexSetResource) UpgradeState(ctx context.Context) map[int64]resource.
 		0: {
 			PriorSchema: &schema.Schema{
 				Attributes: map[string]schema.Attribute{
-					"id":                                 schema.StringAttribute{Computed: true},
-					"title":                              schema.StringAttribute{Required: true},
-					"description":                        schema.StringAttribute{Optional: true},
-					"index_prefix":                       schema.StringAttribute{Required: true},
+					"id":                                  schema.StringAttribute{Computed: true},
+					"title":                               schema.StringAttribute{Required: true},
+					"description":                         schema.StringAttribute{Optional: true},
+					"index_prefix":                        schema.StringAttribute{Required: true},
 					"index_optimization_max_num_segments": schema.Int64Attribute{Optional: true},
-					"index_optimization_disabled":        schema.BoolAttribute{Optional: true},
-					"field_type_refresh_interval":        schema.Int64Attribute{Optional: true},
-					"shards":                             schema.Int64Attribute{Optional: true},
-					"replicas":                           schema.Int64Attribute{Optional: true},
-					"writable":                           schema.BoolAttribute{Optional: true},
-					"index_analyzer":                     schema.StringAttribute{Optional: true},
-					"use_legacy_rotation":                schema.BoolAttribute{Optional: true},
-					"rotation_strategy_class":            schema.StringAttribute{Required: true},
-					"retention_strategy_class":           schema.StringAttribute{Required: true},
-					"set_as_default":                     schema.BoolAttribute{Optional: true},
-					"is_default":                         schema.BoolAttribute{Computed: true},
-					"sync_template":                      schema.BoolAttribute{Optional: true},
+					"index_optimization_disabled":         schema.BoolAttribute{Optional: true},
+					"field_type_refresh_interval":         schema.Int64Attribute{Optional: true},
+					"shards":                              schema.Int64Attribute{Optional: true},
+					"replicas":                            schema.Int64Attribute{Optional: true},
+					"writable":                            schema.BoolAttribute{Optional: true},
+					"index_analyzer":                      schema.StringAttribute{Optional: true},
+					"use_legacy_rotation":                 schema.BoolAttribute{Optional: true},
+					"rotation_strategy_class":             schema.StringAttribute{Required: true},
+					"retention_strategy_class":            schema.StringAttribute{Required: true},
+					"set_as_default":                      schema.BoolAttribute{Optional: true},
+					"is_default":                          schema.BoolAttribute{Computed: true},
+					"sync_template":                       schema.BoolAttribute{Optional: true},
 				},
 				Blocks: map[string]schema.Block{
 					"rotation_strategy": schema.SingleNestedBlock{
@@ -265,7 +268,7 @@ func (r *IndexSetResource) UpgradeState(ctx context.Context) map[int64]resource.
 					},
 					"retention_strategy": schema.SingleNestedBlock{
 						Attributes: map[string]schema.Attribute{
-							"type":                 schema.StringAttribute{Required: true},
+							"type":                  schema.StringAttribute{Required: true},
 							"max_number_of_indices": schema.Int64Attribute{Optional: true},
 						},
 					},

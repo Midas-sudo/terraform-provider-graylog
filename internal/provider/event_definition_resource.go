@@ -122,11 +122,16 @@ func (r *EventDefinitionResource) Schema(_ context.Context, _ resource.SchemaReq
 				MarkdownDescription: "Whether the definition should trigger alerts.",
 			},
 			"config": schema.DynamicAttribute{
-				Required:            true,
-				MarkdownDescription: "Event definition configuration object.",
+				Required: true,
+				MarkdownDescription: "Event definition configuration object. Must include `type` " +
+					"(e.g. `aggregation-v1`, `system-notifications-v1`). " +
+					"Available processor types: [`graylog_event_entity_types`](../data-sources/event_entity_types.md).",
 			},
 			"field_spec": schema.DynamicAttribute{
 				Optional: true,
+				MarkdownDescription: "Map of custom event fields. Values are provider objects " +
+					"(e.g. `type = \"template-v1\"` or `lookup-v1`). " +
+					"See [`graylog_event_entity_types`](../data-sources/event_entity_types.md) `field_provider_types`.",
 			},
 			"key_spec": schema.ListAttribute{
 				Optional:    true,
@@ -134,12 +139,14 @@ func (r *EventDefinitionResource) Schema(_ context.Context, _ resource.SchemaReq
 			},
 			"notification_settings": eventDefinitionNotificationSettingsSchema(true),
 			"notifications": schema.DynamicAttribute{
-				Optional:            true,
-				MarkdownDescription: "List of notification binding objects.",
+				Optional: true,
+				MarkdownDescription: "List of notification binding objects " +
+					"(typically `notification_id` plus optional `notification_parameters`).",
 			},
 			"storage": schema.DynamicAttribute{
-				Optional:            true,
-				MarkdownDescription: "List of storage configuration objects.",
+				Optional: true,
+				MarkdownDescription: "List of storage configuration objects. Common type: `persist-to-streams-v1`. " +
+					"See [`graylog_event_entity_types`](../data-sources/event_entity_types.md) `storage_handler_types`.",
 			},
 		},
 	}

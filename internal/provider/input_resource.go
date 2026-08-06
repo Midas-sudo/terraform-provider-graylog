@@ -95,8 +95,10 @@ func (r *InputResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 			},
 			"configuration": schema.DynamicAttribute{
 				Required: true,
-				MarkdownDescription: "Input configuration object. Keys depend on the input `type` " +
-					"(e.g. `bind_address`, `port`, `recv_buffer_size`).",
+				MarkdownDescription: "HCL object passed through to Graylog. Required/optional keys depend on `type`. " +
+					"Discover fields for your cluster with [`graylog_input_types`](../data-sources/input_types.md) " +
+					"(`requested_configuration`). Common network inputs use `bind_address`, `port`, and " +
+					"`recv_buffer_size`; see the resource page for per-type examples.",
 			},
 			"static_fields": schema.MapAttribute{
 				ElementType:         types.StringType,

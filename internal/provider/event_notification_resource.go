@@ -70,8 +70,10 @@ func (r *EventNotificationResource) Schema(_ context.Context, _ resource.SchemaR
 				MarkdownDescription: "Notification description.",
 			},
 			"config": schema.DynamicAttribute{
-				Required:            true,
-				MarkdownDescription: "Notification-specific configuration object.",
+				Required: true,
+				MarkdownDescription: "HCL object passed through to Graylog. Must include `type` " +
+					"(e.g. `http-notification-v1`, `email-notification-v1`). " +
+					"Discover fields with [`graylog_event_notification_types`](../data-sources/event_notification_types.md).",
 			},
 		},
 	}

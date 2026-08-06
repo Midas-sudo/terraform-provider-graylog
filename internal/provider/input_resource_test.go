@@ -70,6 +70,7 @@ func TestAccInputDataSources(t *testing.T) {
 					resource.TestCheckResourceAttr("data.graylog_input.test", "title", "TF Acc Input DS"),
 					resource.TestCheckResourceAttrSet("data.graylog_inputs.test", "inputs.0.id"),
 					resource.TestCheckResourceAttrSet("data.graylog_input_types.test", "types.0.type"),
+					resource.TestCheckResourceAttrSet("data.graylog_input_types.test", "types.0.requested_configuration.0.name"),
 				),
 			},
 		},

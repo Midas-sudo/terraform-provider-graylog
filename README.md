@@ -40,7 +40,13 @@ Targets **Graylog 6.x** and designed for forward compatibility with **7.x**.
 |---|---|
 | `graylog_input` | Look up a single input by ID |
 | `graylog_inputs` | List all inputs |
-| `graylog_input_types` | List available input types |
+| `graylog_input_types` | List available input types and configuration fields |
+| `graylog_output_types` | List available output types and configuration fields |
+| `graylog_lookup_adapter_types` | List lookup data adapter types and default config keys |
+| `graylog_lookup_cache_types` | List lookup cache types and default config keys |
+| `graylog_index_set_strategy_types` | List rotation/retention strategies and config fields |
+| `graylog_event_notification_types` | List event notification types and configuration fields |
+| `graylog_event_entity_types` | List event definition processor/storage/field catalogs |
 | `graylog_index_set` | Look up a single index set by ID |
 | `graylog_index_sets` | List all index sets |
 | `graylog_index_template` | Read the generated index template for an index set |

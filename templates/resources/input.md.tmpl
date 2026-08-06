@@ -1,0 +1,51 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.RenderedProviderName}}"
+subcategory: ""
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{ .Description | trimspace }}
+
+{{ if .HasExamples -}}
+## Example Usage
+{{- range .ExampleFiles }}
+
+{{ tffile . }}
+{{- end }}
+{{- end }}
+
+## Configuration by type
+
+`configuration` is a Dynamic HCL object. Keys are defined by Graylog for each input `type`.
+Discover the full field list (required/optional, defaults, descriptions) for your cluster with:
+
+```terraform
+data "graylog_input_types" "available" {}
+```
+
+Common built-in short type names and typical keys:
+
+| Type | Common keys |
+|---|---|
+| `SyslogUDPInput` / `SyslogTCPInput` | `bind_address`, `port`, `recv_buffer_size`, `allow_override_date`, `force_rdns`, `store_full_message`, `expand_structured_data` |
+| `GELFUDPInput` / `GELFTCPInput` / `GELFHttpInput` | `bind_address`, `port`, `recv_buffer_size`, `decompress_size_limit`, `override_source` |
+| `RawUDPInput` / `RawTCPInput` | `bind_address`, `port`, `recv_buffer_size` |
+| `BeatsInput` | `bind_address`, `port`, `recv_buffer_size`, TLS-related keys when enabled |
+| `KafkaInput` | broker / topic / group keys (see `graylog_input_types`) |
+
+Use the short class name (e.g. `SyslogUDPInput`) or the full Java type. Unknown plugin types can use the FQCN.
+
+{{ .SchemaMarkdown | trimspace }}
+{{- if .HasImport }}
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+{{ codefile "shell" .ImportFile }}
+{{- end }}

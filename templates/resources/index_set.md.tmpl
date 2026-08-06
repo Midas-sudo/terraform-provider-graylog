@@ -1,0 +1,55 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.RenderedProviderName}}"
+subcategory: ""
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{ .Description | trimspace }}
+
+{{ if .HasExamples -}}
+## Example Usage
+{{- range .ExampleFiles }}
+
+{{ tffile . }}
+{{- end }}
+{{- end }}
+
+## Strategy configuration
+
+`rotation_strategy` and `retention_strategy` are Dynamic objects. The nested `type` is the
+**strategy config** type (e.g. `TimeBasedRotationStrategyConfig`), while
+`rotation_strategy_class` / `retention_strategy_class` are the strategy class names
+(e.g. `TimeBasedRotationStrategy`).
+
+Discover live schemas with:
+
+```terraform
+data "graylog_index_set_strategy_types" "available" {}
+```
+
+| Rotation class | Config `type` | Typical keys |
+|---|---|---|
+| `TimeBasedRotationStrategy` | `TimeBasedRotationStrategyConfig` | `rotation_period`, `rotate_empty_index_set` |
+| `MessageCountRotationStrategy` | `MessageCountRotationStrategyConfig` | `max_docs_per_index` |
+| `SizeBasedRotationStrategy` | `SizeBasedRotationStrategyConfig` | `max_size` |
+| `TimeBasedSizeOptimizingStrategy` | `TimeBasedSizeOptimizingStrategyConfig` | size-optimizing period keys |
+
+| Retention class | Config `type` | Typical keys |
+|---|---|---|
+| `DeletionRetentionStrategy` | `DeletionRetentionStrategyConfig` | `max_number_of_indices` |
+| `NoopRetentionStrategy` | `NoopRetentionStrategyConfig` | `max_number_of_indices` |
+
+{{ .SchemaMarkdown | trimspace }}
+{{- if .HasImport }}
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+{{ codefile "shell" .ImportFile }}
+{{- end }}
