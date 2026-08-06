@@ -1,0 +1,56 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.RenderedProviderName}}"
+subcategory: ""
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{ .Description | trimspace }}
+
+{{ if .HasExamples -}}
+## Example Usage
+{{- range .ExampleFiles }}
+
+{{ tffile . }}
+{{- end }}
+{{- end }}
+
+## Extractor and converter configuration
+
+Graylog does not expose a rich discovery API for extractor configs. Use this matrix as a starting point.
+
+| `extractor_type` | Typical `extractor_config` keys |
+|---|---|
+| `copy_input` | `{}` (empty object) |
+| `regex` | `regex_value` |
+| `regex_replace` | `regex`, `replacement`, optional `replace_all` |
+| `split_and_index` | `split_by`, `index` |
+| `substring` | `start_char`, `end_char` |
+| `json` | JSON flattening / key options as accepted by Graylog |
+| `grok` | `grok_pattern` |
+| `lookup_table` | lookup table related keys |
+
+| Converter `type` | Notes |
+|---|---|
+| `numeric` | Cast to number |
+| `date` | Date parsing (`config` may include date format) |
+| `hash` | Hashing |
+| `lowercase` / `uppercase` | Case conversion |
+| `tokenizer` | Tokenize value |
+| `csv` | CSV parsing options in `config` |
+
+`converters` is a list of objects like `{ type = "numeric", config = {} }`.
+
+{{ .SchemaMarkdown | trimspace }}
+{{- if .HasImport }}
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+{{ codefile "shell" .ImportFile }}
+{{- end }}

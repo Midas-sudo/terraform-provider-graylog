@@ -67,8 +67,10 @@ func (r *LookupCacheResource) Schema(_ context.Context, _ resource.SchemaRequest
 			"name":        schema.StringAttribute{Required: true},
 			"description": schema.StringAttribute{Optional: true},
 			"config": schema.DynamicAttribute{
-				Required:            true,
-				MarkdownDescription: "Cache-specific configuration object.",
+				Required: true,
+				MarkdownDescription: "HCL object passed through to Graylog. Must include `type` (e.g. `none`, `guava_cache`). " +
+					"Discover keys via [`graylog_lookup_cache_types`](../data-sources/lookup_cache_types.md) " +
+					"(`default_config` / synthesized `requested_configuration`).",
 			},
 		},
 	}

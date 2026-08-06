@@ -1,3 +1,16 @@
+## 0.12.0 (Aug 6, 2026)
+
+FEATURES:
+
+- Type-discovery data sources expose Graylog plugin configuration fields (`requested_configuration`, defaults, optional/required) so Dynamic resource attrs are discoverable at plan time:
+  - `graylog_input_types` now returns full field metadata from `/system/inputs/types/all`
+  - `graylog_output_types`
+  - `graylog_lookup_adapter_types` / `graylog_lookup_cache_types`
+  - `graylog_index_set_strategy_types` (rotation + retention)
+  - `graylog_event_notification_types` (modern built-ins + legacy alarm callbacks)
+  - `graylog_event_entity_types` (processor / field provider / storage / aggregation catalogs)
+- Registry docs for Dynamic resources include per-type configuration tables and point at the matching types data source.
+
 ## 0.11.1 (Aug 4, 2026)
 
 BUG FIXES:

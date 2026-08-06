@@ -103,12 +103,16 @@ func (r *ExtractorResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 				Optional: true,
 			},
 			"extractor_config": schema.DynamicAttribute{
-				Optional:            true,
-				MarkdownDescription: "Extractor-specific configuration object.",
+				Optional: true,
+				MarkdownDescription: "Extractor-specific configuration object. Keys depend on `extractor_type` " +
+					"(e.g. `regex` uses `regex_value`; `split_and_index` uses `split_by` / `index`; " +
+					"`copy_input` often uses `{}`). See the resource docs for a type matrix.",
 			},
 			"converters": schema.DynamicAttribute{
-				Optional:            true,
-				MarkdownDescription: "List of converter configuration objects.",
+				Optional: true,
+				MarkdownDescription: "List of converter objects. Each entry typically has `type` " +
+					"(e.g. `numeric`, `date`, `hash`, `lowercase`, `uppercase`, `tokenizer`) " +
+					"and optional `config` object.",
 			},
 		},
 	}

@@ -235,13 +235,8 @@ type InputTypesDataSource struct {
 	client *client.Client
 }
 
-type InputTypeModel struct {
-	Type string `tfsdk:"type"`
-	Name string `tfsdk:"name"`
-}
-
 type InputTypesDataSourceModel struct {
-	Types []InputTypeModel `tfsdk:"types"`
+	Types []typeDescriptorModel `tfsdk:"types"`
 }
 
 func (d *InputTypesDataSource) Metadata(_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -250,17 +245,10 @@ func (d *InputTypesDataSource) Metadata(_ context.Context, req datasource.Metada
 
 func (d *InputTypesDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Lists all available Graylog input types.",
+		MarkdownDescription: "Lists available Graylog input types and their `requested_configuration` fields. " +
+			"Use this to discover required/optional keys for `graylog_input.configuration`.",
 		Attributes: map[string]schema.Attribute{
-			"types": schema.ListNestedAttribute{
-				Computed: true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"type": schema.StringAttribute{Computed: true, MarkdownDescription: "Short alias when known, else full Java type."},
-						"name": schema.StringAttribute{Computed: true, MarkdownDescription: "Human-readable name of the input type."},
-					},
-				},
-			},
+			"types": typeDescriptorsListSchema("Available input types."),
 		},
 	}
 }
@@ -279,19 +267,16 @@ func (d *InputTypesDataSource) Configure(_ context.Context, req datasource.Confi
 }
 
 func (d *InputTypesDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	result, err := d.client.GetInputTypes(ctx)
+	result, err := d.client.GetInputTypesAll(ctx)
 	if err != nil {
 		resp.Diagnostics.AddError("Failed to list input types", err.Error())
 		return
 	}
 
-	var data InputTypesDataSourceModel
-	for typeName, humanName := range result.Types {
-		data.Types = append(data.Types, InputTypeModel{
-			Type: collapseInputType(typeName),
-			Name: string(humanName),
-		})
+	types, err := mapTypeDescriptors(ctx, client.SortedTypeDescriptors(result), collapseInputType)
+	if err != nil {
+		resp.Diagnostics.AddError("Failed to map input types", err.Error())
+		return
 	}
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &InputTypesDataSourceModel{Types: types})...)
 }

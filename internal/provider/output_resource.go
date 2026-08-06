@@ -63,8 +63,10 @@ func (r *OutputResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 					"(`org.graylog2.outputs....`). Short names expand on API calls and collapse in state when known.",
 			},
 			"configuration": schema.DynamicAttribute{
-				Required:            true,
-				MarkdownDescription: "Plugin-specific output configuration object.",
+				Required: true,
+				MarkdownDescription: "HCL object passed through to Graylog. Required/optional keys depend on `type`. " +
+					"Discover fields with [`graylog_output_types`](../data-sources/output_types.md) " +
+					"(`requested_configuration`). Example: `LoggingOutput` accepts optional `prefix`.",
 			},
 		},
 	}

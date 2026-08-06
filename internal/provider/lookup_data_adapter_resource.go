@@ -73,8 +73,10 @@ func (r *LookupDataAdapterResource) Schema(_ context.Context, _ resource.SchemaR
 			"name":        schema.StringAttribute{Required: true},
 			"description": schema.StringAttribute{Optional: true},
 			"config": schema.DynamicAttribute{
-				Required:            true,
-				MarkdownDescription: "Adapter-specific configuration object.",
+				Required: true,
+				MarkdownDescription: "HCL object passed through to Graylog. Must include `type` (e.g. `csvfile`, `httpjsonpath`, `dnslookup`). " +
+					"Discover keys via [`graylog_lookup_adapter_types`](../data-sources/lookup_adapter_types.md) " +
+					"(`default_config` / synthesized `requested_configuration`).",
 			},
 			"custom_error_ttl_enabled": schema.BoolAttribute{
 				Optional: true,

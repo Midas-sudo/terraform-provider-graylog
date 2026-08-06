@@ -1,0 +1,40 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.RenderedProviderName}}"
+subcategory: ""
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{ .Description | trimspace }}
+
+{{ if .HasExamples -}}
+## Example Usage
+{{- range .ExampleFiles }}
+
+{{ tffile . }}
+{{- end }}
+{{- end }}
+
+## Configuration by type
+
+`config` must include `type`. Discover defaults with
+[`graylog_lookup_cache_types`](../data-sources/lookup_cache_types.md).
+
+| Type | Common keys |
+|---|---|
+| `none` | `type` only |
+| `guava_cache` | `max_size`, `expire_after_access`, `expire_after_access_unit`, `expire_after_write`, `expire_after_write_unit`, `ignore_null` |
+
+{{ .SchemaMarkdown | trimspace }}
+{{- if .HasImport }}
+
+## Import
+
+Import is supported using the following syntax:
+
+The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
+
+{{ codefile "shell" .ImportFile }}
+{{- end }}

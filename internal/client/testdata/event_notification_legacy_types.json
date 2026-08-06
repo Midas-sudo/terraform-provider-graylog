@@ -1,0 +1,76 @@
+{
+  "types": {
+    "org.graylog2.alarmcallbacks.EmailAlarmCallback": {
+      "name": "Email Alarm Callback [Deprecated]",
+      "configuration": {
+        "sender": {
+          "human_name": "Sender",
+          "additional_info": {},
+          "is_encrypted": false,
+          "description": "The sender of sent out mail alerts",
+          "default_value": "",
+          "attributes": [],
+          "position": 100,
+          "type": "text",
+          "is_optional": true
+        },
+        "subject": {
+          "human_name": "E-Mail Subject",
+          "additional_info": {},
+          "is_encrypted": false,
+          "description": "The subject of sent out mail alerts",
+          "default_value": "Graylog alert for stream: ${stream.title}: ${check_result.resultDescription}",
+          "attributes": [],
+          "position": 100,
+          "type": "text",
+          "is_optional": false
+        },
+        "body": {
+          "human_name": "E-Mail Body",
+          "additional_info": {},
+          "is_encrypted": false,
+          "description": "The template to generate the body from",
+          "default_value": "##########\nAlert Description: ${check_result.resultDescription}\nDate: ${check_result.triggeredAt}\nStream ID: ${stream.id}\nStream title: ${stream.title}\nStream description: ${stream.description}\nAlert Condition Title: ${alertCondition.title}\n${if stream_url}Stream URL: ${stream_url}${end}\n\nTriggered condition: ${check_result.triggeredCondition}\n##########\n\n${if backlog}Last messages accounting for this alert:\n${foreach backlog message}${message}\n\n${end}${else}<No backlog>\n${end}\n",
+          "attributes": [
+            "textarea"
+          ],
+          "position": 100,
+          "type": "text",
+          "is_optional": true
+        },
+        "user_receivers": {
+          "human_name": "User Receivers",
+          "additional_info": {
+            "values": {
+              "admin": "admin",
+              "tf-demo-user": "tf-demo-user",
+              "graylog-sidecar": "graylog-sidecar"
+            }
+          },
+          "is_encrypted": false,
+          "description": "Usernames that should receive this alert",
+          "default_value": [],
+          "attributes": [],
+          "position": 100,
+          "type": "list",
+          "is_optional": true
+        },
+        "email_receivers": {
+          "human_name": "E-Mail Receivers",
+          "additional_info": {
+            "values": {}
+          },
+          "is_encrypted": false,
+          "description": "E-Mail addresses that should receive this alert",
+          "default_value": [],
+          "attributes": [
+            "allow_create"
+          ],
+          "position": 100,
+          "type": "list",
+          "is_optional": true
+        }
+      }
+    }
+  }
+}
